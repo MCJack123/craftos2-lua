@@ -989,6 +989,7 @@ LUA_API int lua_error (lua_State *L) {
   lua_lock(L);
   api_checknelems(L, 1);
   //luaG_errormsg(L);
+  luaD_throw(L, LUA_ERRRUN);
   lua_unlock(L);
   return 0;  /* to avoid warnings */
 }

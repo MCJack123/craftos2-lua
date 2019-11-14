@@ -328,6 +328,7 @@ LUA_API void lua_setlevel	(lua_State *from, lua_State *to);
 #define LUA_HOOKLINE	2
 #define LUA_HOOKCOUNT	3
 #define LUA_HOOKTAILRET 4
+#define LUA_HOOKERROR 5
 
 
 /*
@@ -337,6 +338,7 @@ LUA_API void lua_setlevel	(lua_State *from, lua_State *to);
 #define LUA_MASKRET	(1 << LUA_HOOKRET)
 #define LUA_MASKLINE	(1 << LUA_HOOKLINE)
 #define LUA_MASKCOUNT	(1 << LUA_HOOKCOUNT)
+#define LUA_MASKERROR (1 << LUA_HOOKERROR)
 
 typedef struct lua_Debug lua_Debug;  /* activation record */
 
