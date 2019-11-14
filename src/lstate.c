@@ -55,6 +55,7 @@ static void stack_init (lua_State *L1, lua_State *L) {
   setnilvalue(L1->top++);  /* `function' entry for this `ci' */
   L1->base = L1->ci->base = L1->top;
   L1->ci->top = L1->top + LUA_MINSTACK;
+  L1->ci->errfunc = 0;
 }
 
 
@@ -67,7 +68,7 @@ static void freestack (lua_State *L, lua_State *L1) {
 /*
 ** open parts that may cause memory-allocation errors
 */
-static void f_luaopen (lua_State *L, void *ud) {
+static int f_luaopen (lua_State *L, void *ud) {
   global_State *g = G(L);
   UNUSED(ud);
   stack_init(L, L);  /* init stack */
@@ -78,6 +79,7 @@ static void f_luaopen (lua_State *L, void *ud) {
   luaX_init(L);
   luaS_fix(luaS_newliteral(L, MEMERRMSG));
   g->GCthreshold = 4*g->totalbytes;
+  return 0;
 }
 
 
@@ -89,15 +91,13 @@ static void preinit_state (lua_State *L, global_State *g) {
   L->hook = NULL;
   L->hookmask = 0;
   L->basehookcount = 0;
-  L->allowhook = 1;
   resethookcount(L);
   L->openupval = NULL;
   L->size_ci = 0;
-  L->nCcalls = L->baseCcalls = 0;
+  L->nCcalls = L->baseCcalls = LUA_NOYIELD | LUA_NOVPCALL;;
   L->status = 0;
   L->base_ci = L->ci = NULL;
-  L->savedpc = NULL;
-  L->errfunc = 0;
+  L->ctx = NULL;
   setnilvalue(gt(L));
 }
 
@@ -190,9 +190,10 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud) {
 }
 
 
-static void callallgcTM (lua_State *L, void *ud) {
+static int callallgcTM (lua_State *L, void *ud) {
   UNUSED(ud);
   luaC_callGCTM(L);  /* call GC metamethods for all udata */
+ return 0;
 }
 
 
@@ -201,9 +202,9 @@ LUA_API void lua_close (lua_State *L) {
   lua_lock(L);
   luaF_close(L, L->stack);  /* close all upvalues for this thread */
   luaC_separateudata(L, 1);  /* separate udata that have GC metamethods */
-  L->errfunc = 0;  /* no error function during GC metamethods */
   do {  /* repeat until no more errors */
     L->ci = L->base_ci;
+    L->ci->errfunc = 0;  /* no error function during GC metamethods */
     L->base = L->top = L->ci->base;
     L->nCcalls = L->baseCcalls = 0;
   } while (luaD_rawrunprotected(L, callallgcTM, NULL) != 0);

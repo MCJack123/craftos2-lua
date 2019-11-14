@@ -290,7 +290,9 @@ LUA_API int lua_equal (lua_State *L, int index1, int index2) {
   lua_lock(L);  /* may call tag method */
   o1 = index2adr(L, index1);
   o2 = index2adr(L, index2);
-  i = (o1 == luaO_nilobject || o2 == luaO_nilobject) ? 0 : equalobj(L, o1, o2);
+  notresumable(L,
+    i = (o1 == luaO_nilobject || o2 == luaO_nilobject) ? 0 : equalobj(L, o1, o2);
+  )
   lua_unlock(L);
   return i;
 }
@@ -302,8 +304,10 @@ LUA_API int lua_lessthan (lua_State *L, int index1, int index2) {
   lua_lock(L);  /* may call tag method */
   o1 = index2adr(L, index1);
   o2 = index2adr(L, index2);
-  i = (o1 == luaO_nilobject || o2 == luaO_nilobject) ? 0
-       : luaV_lessthan(L, o1, o2);
+  notresumable(L,
+    i = (o1 == luaO_nilobject || o2 == luaO_nilobject) ? 0
+         : luaV_lessthan(L, o1, o2);
+  )
   lua_unlock(L);
   return i;
 }
@@ -536,7 +540,9 @@ LUA_API void lua_gettable (lua_State *L, int idx) {
   lua_lock(L);
   t = index2adr(L, idx);
   api_checkvalidindex(L, t);
-  luaV_gettable(L, t, L->top - 1, L->top - 1);
+  notresumable(L,
+    luaV_gettable(L, t, L->top - 1, L->top - 1);
+  )
   lua_unlock(L);
 }
 
@@ -548,7 +554,9 @@ LUA_API void lua_getfield (lua_State *L, int idx, const char *k) {
   t = index2adr(L, idx);
   api_checkvalidindex(L, t);
   setsvalue(L, &key, luaS_new(L, k));
-  luaV_gettable(L, t, &key, L->top);
+    notresumable(L,
+    luaV_gettable(L, t, &key, L->top);
+  )
   api_incr_top(L);
   lua_unlock(L);
 }
@@ -648,7 +656,9 @@ LUA_API void lua_settable (lua_State *L, int idx) {
   api_checknelems(L, 2);
   t = index2adr(L, idx);
   api_checkvalidindex(L, t);
-  luaV_settable(L, t, L->top - 2, L->top - 1);
+  notresumable(L,
+    luaV_settable(L, t, L->top - 2, L->top - 1);
+  )
   L->top -= 2;  /* pop index and value */
   lua_unlock(L);
 }
@@ -662,7 +672,9 @@ LUA_API void lua_setfield (lua_State *L, int idx, const char *k) {
   t = index2adr(L, idx);
   api_checkvalidindex(L, t);
   setsvalue(L, &key, luaS_new(L, k));
-  luaV_settable(L, t, &key, L->top - 1);
+  notresumable(L,
+    luaV_settable(L, t, &key, L->top - 1);
+  )
   L->top--;  /* pop value */
   lua_unlock(L);
 }
@@ -765,23 +777,29 @@ LUA_API int lua_setfenv (lua_State *L, int idx) {
 */
 
 
-#define adjustresults(L,nres) \
-    { if (nres == LUA_MULTRET && L->top >= L->ci->top) L->ci->top = L->top; }
-
-
 #define checkresults(L,na,nr) \
-     api_check(L, (nr) == LUA_MULTRET || (L->ci->top - L->top >= (nr) - (na)))
+     api_check(L, (nr) == LUA_MULTRET || (L->ci->tozp - L->top >= (nr) - (na)))
 	
+LUA_API void *lua_vcontext (lua_State *L) {
+  return L->ctx;
+}
 
-LUA_API void lua_call (lua_State *L, int nargs, int nresults) {
-  StkId func;
-  lua_lock(L);
-  api_checknelems(L, nargs+1);
-  checkresults(L, nargs, nresults);
-  func = L->top - (nargs+1);
-  luaD_call(L, func, nresults);
-  adjustresults(L, nresults);
-  lua_unlock(L);
+
+LUA_API void lua_vcall (lua_State *L, int nargs, int nresults, void *ctx) {
+   int flags;
+   lua_lock(L);
+   api_checknelems(L, nargs+1);
+   checkresults(L, nargs, nresults);
+   if (ctx == NULL)
+     flags = LUA_NOYIELD | LUA_NOVPCALL;
+   else {
+     lua_assert(iscfunction(L->ci->func));
+     L->ctx = ctx;
+     flags = 0;
+   }
+   luaD_call(L, L->top - (nargs+1), nresults, flags);
+   if (L->top > L->ci->top) L->ci->top = L->top;
+   lua_unlock(L);
 }
 
 
@@ -795,33 +813,37 @@ struct CallS {  /* data to `f_call' */
 };
 
 
-static void f_call (lua_State *L, void *ud) {
+static int f_call (lua_State *L, void *ud) {
   struct CallS *c = cast(struct CallS *, ud);
-  luaD_call(L, c->func, c->nresults);
+  luaD_call(L, c->func, c->nresults, 0);
+  return 0;
 }
 
 
-
-LUA_API int lua_pcall (lua_State *L, int nargs, int nresults, int errfunc) {
-  struct CallS c;
+LUA_API int lua_vpcall (lua_State *L, int nargs, int nresults, int errfunc, void *ctx) {
   int status;
-  ptrdiff_t func;
   lua_lock(L);
   api_checknelems(L, nargs+1);
   checkresults(L, nargs, nresults);
-  if (errfunc == 0)
-    func = 0;
-  else {
-    StkId o = index2adr(L, errfunc);
-    api_checkvalidindex(L, o);
-    func = savestack(L, o);
+  if (errfunc < 0) errfunc = (L->top - L->base) + errfunc + 1;
+  api_check(L, L->base + errfunc <= L->top - (nargs+1));
+  if (ctx == NULL || novpcall(L)) {  /* use classic pcall */
+    struct CallS c;
+    c.func = L->top - (nargs+1);  /* function to be called */
+    c.nresults = nresults;
+    status = luaD_pcall(L, f_call, &c, savestack(L, c.func),
+                        errfunc, ~LUA_NOVPCALL);
   }
-  c.func = L->top - (nargs+1);  /* function to be called */
-  c.nresults = nresults;
-  status = luaD_pcall(L, f_call, &c, savestack(L, c.func), func);
-  adjustresults(L, nresults);
-  lua_unlock(L);
-  return status;
+  else {  /* else use vpcall */
+    luaD_catch(L, errfunc);
+    L->ctx = ctx;
+    luaD_call(L, L->top - (nargs+1), nresults, 0);
+    L->ci->errfunc = 0;
+    status = 0;
+  }
+  if (L->top > L->ci->top) L->ci->top = L->top;
+   lua_unlock(L);
+   return status;
 }
 
 
@@ -834,7 +856,7 @@ struct CCallS {  /* data to `f_Ccall' */
 };
 
 
-static void f_Ccall (lua_State *L, void *ud) {
+static int f_Ccall (lua_State *L, void *ud) {
   struct CCallS *c = cast(struct CCallS *, ud);
   Closure *cl;
   cl = luaF_newCclosure(L, 0, getcurrenv(L));
@@ -843,7 +865,9 @@ static void f_Ccall (lua_State *L, void *ud) {
   api_incr_top(L);
   setpvalue(L->top, c->ud);  /* push only argument */
   api_incr_top(L);
-  luaD_call(L, L->top - 2, 0);
+  luaD_call(L, L->top - 2, 0, 0);
+  
+  return 0;
 }
 
 
@@ -853,7 +877,7 @@ LUA_API int lua_cpcall (lua_State *L, lua_CFunction func, void *ud) {
   lua_lock(L);
   c.func = func;
   c.ud = ud;
-  status = luaD_pcall(L, f_Ccall, &c, savestack(L, L->top), 0);
+  status = luaD_pcall(L, f_Ccall, &c, savestack(L, L->top), 0, 0);
   lua_unlock(L);
   return status;
 }
@@ -964,7 +988,7 @@ LUA_API int lua_gc (lua_State *L, int what, int data) {
 LUA_API int lua_error (lua_State *L) {
   lua_lock(L);
   api_checknelems(L, 1);
-  luaG_errormsg(L);
+  //luaG_errormsg(L);
   lua_unlock(L);
   return 0;  /* to avoid warnings */
 }

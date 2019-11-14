@@ -371,6 +371,8 @@ static int db_errorfb (lua_State *L) {
   return 1;
 }
 
+extern int db_breakpoint(lua_State *L);
+extern int db_unsetbreakpoint(lua_State *L);
 
 static const luaL_Reg dblib[] = {
   {"debug", db_debug},
@@ -381,12 +383,14 @@ static const luaL_Reg dblib[] = {
   {"getregistry", db_getregistry},
   {"getmetatable", db_getmetatable},
   {"getupvalue", db_getupvalue},
+  {"setbreakpoint", db_breakpoint},
   {"setfenv", db_setfenv},
   {"sethook", db_sethook},
   {"setlocal", db_setlocal},
   {"setmetatable", db_setmetatable},
   {"setupvalue", db_setupvalue},
   {"traceback", db_errorfb},
+  {"unsetbreakpoint", db_unsetbreakpoint},
   {NULL, NULL}
 };
 

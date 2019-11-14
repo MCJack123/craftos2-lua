@@ -48,10 +48,12 @@ typedef struct stringtable {
 typedef struct CallInfo {
   StkId base;  /* base for this function */
   StkId func;  /* function index in the stack */
-  StkId	top;  /* top for this function */
-  const Instruction *savedpc;
-  int nresults;  /* expected number of results from this function */
+  StkId top;  /* top for this function */
+  void *ctx;  /* saved pc for Lua functions or vcontext for C functions */
   int tailcalls;  /* number of tail calls lost under this entry */
+  short nresults;  /* expected number of results from this function */
+  lu_byte hookmask;  /* restore on catch: hookmask */
+  lu_byte errfunc;  /* 0: no catch, 1: catch, >=2: catch with errfunc */
 } CallInfo;
 
 
@@ -100,22 +102,20 @@ typedef struct global_State {
 struct lua_State {
   CommonHeader;
   lu_byte status;
+  lu_byte hookmask;
+  int stacksize;
   StkId top;  /* first free slot in the stack */
   StkId base;  /* base of current function */
   global_State *l_G;
   CallInfo *ci;  /* call info for current function */
-  const Instruction *savedpc;  /* `savedpc' of current function */
+  void *ctx;  /* ctx for current function */
   StkId stack_last;  /* last free slot in the stack */
   StkId stack;  /* stack base */
   CallInfo *end_ci;  /* points after end of ci array*/
   CallInfo *base_ci;  /* array of CallInfo's */
-  int stacksize;
   int size_ci;  /* size of array `base_ci' */
-  unsigned short nCcalls;  /* number of nested C calls */
   unsigned short baseCcalls;  /* nested C calls when resuming coroutine */
-  lu_byte hookmask;
-  lu_byte allowhook;
-  int basehookcount;
+  unsigned short nCcalls;  /* number of nested C calls + callflags */
   int hookcount;
   lua_Hook hook;
   TValue l_gt;  /* table of globals */
@@ -123,7 +123,7 @@ struct lua_State {
   GCObject *openupval;  /* list of open upvalues in this stack */
   GCObject *gclist;
   struct lua_longjmp *errorJmp;  /* current error recover point */
-  ptrdiff_t errfunc;  /* current error handling function (stack index) */
+  int basehookcount;
 };
 
 

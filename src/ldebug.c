@@ -36,8 +36,8 @@ static const char *getfuncname (lua_State *L, CallInfo *ci, const char **name);
 static int currentpc (lua_State *L, CallInfo *ci) {
   if (!isLua(ci)) return -1;  /* function is not a Lua function? */
   if (ci == L->ci)
-    ci->savedpc = L->savedpc;
-  return pcRel(ci->savedpc, ci_func(ci)->l.p);
+  ci->ctx = L->ctx;
+  return pcRel(cast(const Instruction *, ci->ctx), ci_func(ci)->l.p);
 }
 
 
@@ -615,24 +615,11 @@ static void addinfo (lua_State *L, const char *msg) {
 }
 
 
-void luaG_errormsg (lua_State *L) {
-  if (L->errfunc != 0) {  /* is there an error handling function? */
-    StkId errfunc = restorestack(L, L->errfunc);
-    if (!ttisfunction(errfunc)) luaD_throw(L, LUA_ERRERR);
-    setobjs2s(L, L->top, L->top - 1);  /* move argument */
-    setobjs2s(L, L->top - 1, errfunc);  /* push function */
-    incr_top(L);
-    luaD_call(L, L->top - 2, 1);  /* call it */
-  }
-  luaD_throw(L, LUA_ERRRUN);
-}
-
-
 void luaG_runerror (lua_State *L, const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
   addinfo(L, luaO_pushvfstring(L, fmt, argp));
   va_end(argp);
-  luaG_errormsg(L);
+  luaD_throw(L, LUA_ERRRUN);
 }
 

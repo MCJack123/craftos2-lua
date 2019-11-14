@@ -20,14 +20,22 @@
 
 
 static int foreachi (lua_State *L) {
-  int i;
-  int n = aux_getn(L, 1);
-  luaL_checktype(L, 2, LUA_TFUNCTION);
-  for (i=1; i <= n; i++) {
-    lua_pushvalue(L, 2);  /* function */
-    lua_pushinteger(L, i);  /* 1st argument */
-    lua_rawgeti(L, 1, i);  /* 2nd argument */
-    lua_call(L, 2, 1);
+  int n;
+  int i = lua_icontext(L);
+  if (i) {
+    n = lua_tointeger(L, 3);  /* get cached n */
+    goto resume;
+  }
+  n = aux_getn(L, 1);
+   luaL_checktype(L, 2, LUA_TFUNCTION);
+  lua_settop(L, 2);
+  lua_pushinteger(L, n);  /* cache n because aux_getn may be expensive */
+   for (i=1; i <= n; i++) {
+     lua_pushvalue(L, 2);  /* function */
+     lua_pushinteger(L, i);  /* 1st argument */
+     lua_rawgeti(L, 1, i);  /* 2nd argument */
+    lua_icall(L, 2, 1, i);
+resume:
     if (!lua_isnil(L, -1))
       return 1;
     lua_pop(L, 1);  /* remove nil result */
@@ -37,14 +45,15 @@ static int foreachi (lua_State *L) {
 
 
 static int foreach (lua_State *L) {
-  luaL_checktype(L, 1, LUA_TTABLE);
+  if (lua_vcontext(L)) goto resume;
   luaL_checktype(L, 2, LUA_TFUNCTION);
   lua_pushnil(L);  /* first key */
   while (lua_next(L, 1)) {
     lua_pushvalue(L, 2);  /* function */
     lua_pushvalue(L, -3);  /* key */
     lua_pushvalue(L, -3);  /* value */
-    lua_call(L, 2, 1);
+    lua_icall(L, 2, 1, 1);
+resume:
     if (!lua_isnil(L, -1))
       return 1;
     lua_pop(L, 2);  /* remove value and result */

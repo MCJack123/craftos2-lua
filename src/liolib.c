@@ -18,7 +18,10 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
-
+extern FILE* mounter_fopen(lua_State *L, const char * filename, const char * mode);
+#define fopen(f, m) mounter_fopen(L, f, m)
+extern int mounter_fclose(lua_State *L, FILE * stream);
+#define fclose(f) mounter_fclose(L, f)
 
 #define IO_INPUT	1
 #define IO_OUTPUT	2

@@ -20,6 +20,10 @@
 
 #define equalobj(L,o1,o2) \
 	(ttype(o1) == ttype(o2) && luaV_equalval(L, o1, o2))
+	
+#define GETPC(L)	(cast(const Instruction *, L->ctx))
+#define SAVEPC(L, pc)	L->ctx = cast(void *, (pc))
+
 
 
 LUAI_FUNC int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r);
@@ -30,7 +34,8 @@ LUAI_FUNC void luaV_gettable (lua_State *L, const TValue *t, TValue *key,
                                             StkId val);
 LUAI_FUNC void luaV_settable (lua_State *L, const TValue *t, TValue *key,
                                             StkId val);
-LUAI_FUNC void luaV_execute (lua_State *L, int nexeccalls);
+LUAI_FUNC int luaV_execute (lua_State *L);
+LUAI_FUNC void luaV_resume (lua_State *L);
 LUAI_FUNC void luaV_concat (lua_State *L, int total, int last);
 
 #endif

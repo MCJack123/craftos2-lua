@@ -30,13 +30,18 @@
 */
 static int luaB_print (lua_State *L) {
   int n = lua_gettop(L);  /* number of arguments */
-  int i;
-  lua_getglobal(L, "tostring");
+  int i = lua_icontext(L);
+  if (i) {
+    n -= 2;  /* compensate for tostring function and result */
+    goto resume;
+  }
   for (i=1; i<=n; i++) {
     const char *s;
     lua_pushvalue(L, -1);  /* function to be called */
     lua_pushvalue(L, i);   /* value to print */
-    lua_call(L, 1, 1);
+    lua_icall(L, 1, 1, i);
+    
+resume:
     s = lua_tostring(L, -1);  /* get result */
     if (s == NULL)
       return luaL_error(L, LUA_QL("tostring") " must return a string to "
@@ -323,11 +328,12 @@ static int luaB_load (lua_State *L) {
 
 
 static int luaB_dofile (lua_State *L) {
-  const char *fname = luaL_optstring(L, 1, NULL);
-  int n = lua_gettop(L);
-  if (luaL_loadfile(L, fname) != 0) lua_error(L);
-  lua_call(L, 0, LUA_MULTRET);
-  return lua_gettop(L) - n;
+  if (lua_icontext(L)) goto resume;
+  lua_settop(L, 1);
+  if (luaL_loadfile(L, luaL_optstring(L, 1, NULL)) != 0) lua_error(L);
+  lua_icall(L, 0, LUA_MULTRET, 1);
+resume:
+  return lua_gettop(L) - 1;
 }
 
 
@@ -370,33 +376,53 @@ static int luaB_select (lua_State *L) {
   }
 }
 
-
-static int luaB_pcall (lua_State *L) {
-  int status;
-  luaL_checkany(L, 1);
-  status = lua_pcall(L, lua_gettop(L) - 1, LUA_MULTRET, 0);
-  lua_pushboolean(L, (status == 0));
-  lua_insert(L, 1);
-  return lua_gettop(L);  /* return status + all results */
+static int aux_pcall (lua_State *L, int ef) {
+  int status = lua_icontext(L);
+  if (status) goto resume;
+  luaL_checkany(L, ef+1);
+  status = lua_ipcall(L, lua_gettop(L) - ef - 1, LUA_MULTRET, ef, -1);
+resume:
+  if (status > 0) {  /* error */
+    lua_pushboolean(L, 0);
+    lua_insert(L, -2);  /* args may be left on stack with vpcall/ipcall */
+    return 2;  /* return status + error */
+  }
+  else {  /* ok */
+    lua_pushboolean(L, 1);
+    lua_insert(L, ef+1);
+    return lua_gettop(L) - ef;  /* return status + all results */
+  }
 }
 
 
-static int luaB_xpcall (lua_State *L) {
-  int status;
-  luaL_checkany(L, 2);
-  lua_settop(L, 2);
-  lua_insert(L, 1);  /* put error function under function to be called */
-  status = lua_pcall(L, 0, LUA_MULTRET, 1);
-  lua_pushboolean(L, (status == 0));
-  lua_replace(L, 1);
-  return lua_gettop(L);  /* return status + all results */
+static int luaB_pcall (lua_State *L) {
+    return aux_pcall(L, 0);
+}
+
+
+static int luaB_epcall (lua_State *L) {
+  return aux_pcall(L, 1);
+}
+
+
+static int luaB_xpcall (lua_State *L) {  /* for compatibility only */
+  if (lua_icontext(L) == 0) {
+    luaL_checkany(L, 2);
+    lua_settop(L, 2);
+    lua_insert(L, 1);  /* put error function under function to be called */
+  }
+  return aux_pcall(L, 1);
 }
 
 
 static int luaB_tostring (lua_State *L) {
+  if (lua_icontext(L)) return 1;
   luaL_checkany(L, 1);
-  if (luaL_callmeta(L, 1, "__tostring"))  /* is there a metafield? */
-    return 1;  /* use its value */
+  if (luaL_getmetafield(L, 1, "__tostring")) {
+    lua_pushvalue(L, 1);
+    lua_icall(L, 1, 1, 1);  /* call metamethod */
+    return 1;
+  }
   switch (lua_type(L, 1)) {
     case LUA_TNUMBER:
       lua_pushstring(L, lua_tostring(L, 1));
@@ -468,6 +494,7 @@ static const luaL_Reg base_funcs[] = {
   {"tostring", luaB_tostring},
   {"type", luaB_type},
   {"unpack", luaB_unpack},
+  /*{"epcall", luaB_epcall},*/
   {"xpcall", luaB_xpcall},
   {NULL, NULL}
 };
@@ -520,6 +547,7 @@ static int auxresume (lua_State *L, lua_State *co, int narg) {
   if (!lua_checkstack(co, narg))
     luaL_error(L, "too many arguments to resume");
   if (status != CO_SUS) {
+    lua_pushboolean(L, 0);
     lua_pushfstring(L, "cannot resume %s coroutine", statnames[status]);
     return -1;  /* error flag */
   }
@@ -530,11 +558,14 @@ static int auxresume (lua_State *L, lua_State *co, int narg) {
     int nres = lua_gettop(co);
     if (!lua_checkstack(L, nres + 1))
       luaL_error(L, "too many results to resume");
+    lua_pushboolean(L, 1);
     lua_xmove(co, L, nres);  /* move yielded values */
     return nres;
   }
   else {
     lua_xmove(co, L, 1);  /* move error message */
+    lua_pushboolean(L, 0);  /* must do it this way for the L == co case */
+    lua_insert(L, -2);
     return -1;  /* error flag */
   }
 }
@@ -545,16 +576,8 @@ static int luaB_coresume (lua_State *L) {
   int r;
   luaL_argcheck(L, co, 1, "coroutine expected");
   r = auxresume(L, co, lua_gettop(L) - 1);
-  if (r < 0) {
-    lua_pushboolean(L, 0);
-    lua_insert(L, -2);
-    return 2;  /* return false + error message */
-  }
-  else {
-    lua_pushboolean(L, 1);
-    lua_insert(L, -(r + 1));
-    return r + 1;  /* return true + `resume' returns */
-  }
+  if (r < 0) return 2;
+  else return r + 1;  /* return true + `resume' returns */
 }
 
 
@@ -575,8 +598,7 @@ static int luaB_auxwrap (lua_State *L) {
 
 static int luaB_cocreate (lua_State *L) {
   lua_State *NL = lua_newthread(L);
-  luaL_argcheck(L, lua_isfunction(L, 1) && !lua_iscfunction(L, 1), 1,
-    "Lua function expected");
+  luaL_checkany(L, 1);  /* any callable is ok */
   lua_pushvalue(L, 1);  /* move function to top */
   lua_xmove(L, NL, 1);  /* move function from L to NL */
   return 1;
