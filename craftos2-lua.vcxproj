@@ -74,7 +74,7 @@
     <TargetName>lua51</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(SolutionDir)src\</OutDir>
+    <OutDir>$(SolutionDir)craftos2-lua\src\</OutDir>
     <TargetName>lua51</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
