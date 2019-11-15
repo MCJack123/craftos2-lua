@@ -3,3 +3,10 @@
 *.orig
 lua
 luac
+/src/luac.exe
+/src/lua51.lib
+/src/lua51.exp
+/src/lua5.1.lib
+/src/lua.exe
+/x64/Release
+/.vs/craftos2-lua/v16
