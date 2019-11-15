@@ -110,12 +110,8 @@ static int call_errfunc (lua_State *L) {
 
 void luaD_throw (lua_State *L, int errcode) {
   struct lua_longjmp *lj = L->errorJmp;
-  if ((errcode == LUA_ERRERR || errcode == LUA_ERREXC || errcode == LUA_ERRMEM || errcode == LUA_ERRRUN || errcode == LUA_ERRSYNTAX) && L->hookmask & LUA_MASKERROR && !nohooks(L)) {
-    const Instruction* pc = GETPC(L);
-    SAVEPC(L, pc+1);  /* hooks assume 'pc' is already incremented */
+  if ((errcode >= LUA_ERRRUN && errcode <= LUA_ERREXC) && L->hookmask & LUA_MASKERROR)
     luaD_callhook(L, LUA_HOOKERROR, -1);
-    SAVEPC(L, pc);  /* correct 'pc' */
-  }
   if (lj) {
     if (errcode == LUA_ERRRUN)
       errcode = call_errfunc(L);
@@ -274,7 +270,7 @@ static CallInfo *growCI (lua_State *L) {
 
 void luaD_callhook (lua_State *L, int event, int line) {
   lua_Hook hook = L->hook;
-  if (hook /*&& !nohooks(L)*/) {
+  if (hook && (!nohooks(L) || event == LUA_HOOKERROR)) {
     ptrdiff_t top = savestack(L, L->top);
     ptrdiff_t ci_top = savestack(L, L->ci->top);
     lua_Debug ar;
