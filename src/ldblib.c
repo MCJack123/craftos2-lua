@@ -201,7 +201,7 @@ static int db_setupvalue (lua_State *L) {
 
 
 
-static const char KEY_HOOK = 'h';
+const char KEY_HOOK = 'h';
 
 
 static void hookf (lua_State *L, lua_Debug *ar) {
@@ -271,10 +271,14 @@ static int db_sethook (lua_State *L) {
   }
   gethooktable(L);
   lua_pushlightuserdata(L, L1);
+  lua_newtable(L);
   lua_pushvalue(L, arg+1);
+  lua_setfield(L, -2, "func");
+  lua_pushinteger(L, mask);
+  lua_setfield(L, -2, "mask");
   lua_rawset(L, -3);  /* set new hook */
   lua_pop(L, 1);  /* remove hook table */
-  lua_sethook(L1, func, mask, count);  /* set hooks */
+  //lua_sethook(L1, func, mask, count);  /* set hooks */
   return 0;
 }
 
@@ -283,37 +287,22 @@ static int db_gethook (lua_State *L) {
   int arg;
   lua_State *L1 = getthread(L, &arg);
   char buff[5];
-  int mask = lua_gethookmask(L1);
-  lua_Hook hook = lua_gethook(L1);
-  if (hook != NULL && hook != hookf)  /* external hook? */
-    lua_pushliteral(L, "external hook");
-  else {
-    gethooktable(L);
-    lua_pushlightuserdata(L, L1);
-    lua_rawget(L, -2);   /* get hook */
-    lua_remove(L, -2);  /* remove hook table */
-  }
-  lua_pushstring(L, unmakemask(mask, buff));
-  lua_pushinteger(L, lua_gethookcount(L1));
+  gethooktable(L);
+  lua_pushlightuserdata(L, L1);
+  lua_rawget(L, -2);   /* get hook */
+  lua_remove(L, -2);  /* remove hook table */
+  if (!lua_isnil(L, -1)) {
+    lua_getfield(L, -1, "func");
+    lua_getfield(L, -2, "mask");
+    lua_pushstring(L, unmakemask(lua_tointeger(L, -1), buff));
+    lua_remove(L, -2);
+    lua_pushinteger(L, lua_gethookcount(L1));
+  } else return 1;
   return 3;
 }
 
 
-static int db_debug (lua_State *L) {
-  for (;;) {
-    char buffer[250];
-    fputs("lua_debug> ", stderr);
-    if (fgets(buffer, sizeof(buffer), stdin) == 0 ||
-        strcmp(buffer, "cont\n") == 0)
-      return 0;
-    if (luaL_loadbuffer(L, buffer, strlen(buffer), "=(debug command)") ||
-        lua_pcall(L, 0, 0, 0)) {
-      fputs(lua_tostring(L, -1), stderr);
-      fputs("\n", stderr);
-    }
-    lua_settop(L, 0);  /* remove eventual returns */
-  }
-}
+extern int db_debug (lua_State *L);
 
 
 #define LEVELS1	12	/* size of the first part of the stack */
