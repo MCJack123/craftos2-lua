@@ -546,6 +546,8 @@ static int resume_error (lua_State *L, const char *msg) {
     return resume_error(L, "cannot resume dead coroutine");
   }
   lua_assert(cast(StkId, ud) >= L->base);
+  if (L->hookmask & LUA_MASKRESUME)
+    luaD_callhook(L, LUA_HOOKRESUME, -1);
   for (;;) {
     L->nCcalls = 0;
     status = luaD_rawrunprotected(L, pf, ud);
@@ -574,6 +576,8 @@ LUA_API int lua_vyield (lua_State *L, int nresults, void *ctx) {
     L->ctx = ctx;
     L->base = L->top - nresults;  /* no longer in sync with L->ci->base */
   }
+  if (L->hookmask & LUA_MASKYIELD) 
+    luaD_callhook(L, LUA_HOOKYIELD, -1);
   L->status = LUA_YIELD;  /* marker for luaD_callhook */
    lua_unlock(L);
    return -1;
