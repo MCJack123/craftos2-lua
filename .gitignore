@@ -1,6 +1,7 @@
 *.o
 *.a
 *.orig
+x64
 lua
 luac
 /src/luac.exe
@@ -8,5 +9,4 @@ luac
 /src/lua51.exp
 /src/lua5.1.lib
 /src/lua.exe
-/x64/Release
 /.vs/craftos2-lua/v16
