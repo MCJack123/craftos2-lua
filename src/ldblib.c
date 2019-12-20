@@ -254,7 +254,7 @@ static void gethooktable (lua_State *L) {
   }
 }
 
-
+extern void setcompmask(lua_State *L, int mask);
 static int db_sethook (lua_State *L) {
   int arg, mask, count;
   lua_Hook func;
@@ -269,6 +269,7 @@ static int db_sethook (lua_State *L) {
     count = luaL_optint(L, arg+3, 0);
     func = hookf; mask = makemask(smask, count);
   }
+  setcompmask(L, mask);
   gethooktable(L);
   lua_pushlightuserdata(L, L1);
   lua_newtable(L);
