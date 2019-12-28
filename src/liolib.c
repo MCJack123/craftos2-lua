@@ -564,7 +564,7 @@ static int aux_badfd(lua_State *L) {
 
 static int stdout_write(lua_State *L) {
   if (lua_istable(L, 1)) lua_remove(L, 1);
-  lua_getglobal(L, "print");
+  lua_getglobal(L, "write");
   lua_insert(L, 1);
   lua_call(L, lua_gettop(L)-1, 0);
   return 0;
