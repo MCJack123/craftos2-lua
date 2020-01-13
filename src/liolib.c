@@ -180,8 +180,10 @@ static int g_iofile (lua_State *L, int f, const char *mode) {
         fileerror(L, 1, filename);
     }
     else {
-      tofile(L);  /* check that it's a valid file handle */
-      lua_pushvalue(L, 1);
+      if (!lua_istable(L, 1)) {
+        tofile(L);  /* check that it's a valid file handle */
+        lua_pushvalue(L, 1);
+      }
     }
     lua_rawseti(L, LUA_ENVIRONINDEX, f);
   }
@@ -572,9 +574,21 @@ static int stdout_write(lua_State *L) {
 
 static int stderr_write(lua_State *L) {
   if (lua_istable(L, 1)) lua_remove(L, 1);
-  lua_getglobal(L, "printError");
-  lua_pushvalue(L, -2);
+  lua_getglobal(L, "term");
+  lua_getfield(L, -1, "getTextColor");
+  lua_call(L, 0, 1);
+  int color = lua_tointeger(L, -1);
+  lua_pop(L, 1);
+  lua_getfield(L, -1, "setTextColor");
+  lua_pushinteger(L, 16384);
   lua_call(L, 1, 0);
+  lua_getglobal(L, "write");
+  lua_pushvalue(L, -3);
+  lua_call(L, 1, 0);
+  lua_getfield(L, -1, "setTextColor");
+  lua_pushinteger(L, color);
+  lua_call(L, 1, 0);
+  lua_pop(L, 1);
   return 0;
 }
 
