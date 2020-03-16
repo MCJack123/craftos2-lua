@@ -514,7 +514,10 @@ int luaV_execute (lua_State *L) {
         const TValue *rb = RB(i);
         switch (ttype(rb)) {
           case LUA_TTABLE: {
-            setnvalue(ra, cast_num(luaH_getn(hvalue(rb))));
+            Protect(
+              if (!call_binTM(L, rb, luaO_nilobject, ra, TM_LEN))
+                setnvalue(ra, cast_num(luaH_getn(hvalue(rb))));
+            )
             break;
           }
           case LUA_TSTRING: {

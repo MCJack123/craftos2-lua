@@ -112,7 +112,8 @@ static int math_pow (lua_State *L) {
 }
 
 static int math_log (lua_State *L) {
-  lua_pushnumber(L, log(luaL_checknumber(L, 1)));
+  if (!lua_isnoneornil(L, 2)) lua_pushnumber(L, log(luaL_checknumber(L, 1)) / log(luaL_checknumber(L, 2)));
+  else lua_pushnumber(L, log(luaL_checknumber(L, 1)));
   return 1;
 }
 

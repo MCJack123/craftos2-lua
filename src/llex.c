@@ -274,6 +274,13 @@ static void read_long_string (LexState *ls, SemInfo *seminfo, int sep) {
                                      luaZ_bufflen(ls->buff) - 2*(2 + sep));
 }
 
+/* could this break on some systems that don't use ASCII? */
+static int fromhexdigit(int c) {
+  if (c >= '0' && c <= '9') return c - '0';
+  else if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+  else if (c >= 'A' && c <= 'F') return c - 'F' + 10;
+  else return -1;
+}
 
 static void read_string (LexState *ls, int del, SemInfo *seminfo) {
   save_and_next(ls);
@@ -296,7 +303,44 @@ static void read_string (LexState *ls, int del, SemInfo *seminfo) {
           case 'n': c = '\n'; break;
           case 'r': c = '\r'; break;
           case 't': c = '\t'; break;
+          case 'u': {
+            u_int32_t n;
+            next(ls);
+            if (ls->current != '{') luaX_lexerror(ls, "missing '{'", TK_STRING);
+            next(ls);
+            n = 0;
+            while (n <= 0x10FFFF && ls->current != EOZ && isxdigit(ls->current)) {
+              n = (n << 4) | fromhexdigit(ls->current);
+              next(ls);
+            }
+            if (ls->current != '}') luaX_lexerror(ls, "missing '}'", TK_STRING);
+            if (n > 0x10FFFF) luaX_lexerror(ls, "UTF-8 value too large", TK_STRING);
+            else if (n > 0xFFFF) {
+              save(ls, 0xF0 | (n & 0x1C0000) >> 18);
+              save(ls, 0x80 | (n & 0x3F000) >> 12);
+            } else if (n > 0x7FF) save(ls, 0xE0 | (n & 0xF000) >> 12);
+            else if (n > 0x7F) save(ls, 0xC0 | (n & 0x7C0) >> 6);
+            else {c = n; break;}
+            if (n > 0x7FF) save(ls, 0x80 | (n & 0xFC0) >> 6);
+            c = 0x80 | (n & 0x3F);
+            break;
+          }
           case 'v': c = '\v'; break;
+          case 'x': {
+            int d;
+            next(ls);
+            if (ls->current == EOZ) luaX_lexerror(ls, "hexadecimal digit expected", TK_EOS);
+            d = fromhexdigit(ls->current);
+            if (d < 0 || d > 15) luaX_lexerror(ls, "hexadecimal digit expected", TK_STRING);
+            c = d << 4;
+            next(ls);
+            if (ls->current == EOZ) luaX_lexerror(ls, "hexadecimal digit expected", TK_EOS);
+            d = fromhexdigit(ls->current);
+            if (d < 0 || d > 15) luaX_lexerror(ls, "hexadecimal digit expected", TK_STRING);
+            c |= d;
+            break;
+          }
+          case 'z': do next(ls); while (ls->current != EOZ && isspace(ls->current)); continue;
           case '\n':  /* go through */
           case '\r': save(ls, '\n'); inclinenumber(ls); continue;
           case EOZ: continue;  /* will raise an error next loop */
