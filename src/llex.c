@@ -8,6 +8,7 @@
 #include <ctype.h>
 #include <locale.h>
 #include <string.h>
+#include <stdint.h>
 
 #define llex_c
 #define LUA_CORE
@@ -304,7 +305,7 @@ static void read_string (LexState *ls, int del, SemInfo *seminfo) {
           case 'r': c = '\r'; break;
           case 't': c = '\t'; break;
           case 'u': {
-            u_int32_t n;
+            uint32_t n; /* requires 32-bit integers */
             next(ls);
             if (ls->current != '{') luaX_lexerror(ls, "missing '{'", TK_STRING);
             next(ls);
