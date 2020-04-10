@@ -37,7 +37,9 @@ typedef struct LG {
   global_State g;
 } LG;
   
-
+/* forward declarations for lock creation/deletion */
+void * _lua_newlock();
+void _lua_freelock(void *);
 
 static void stack_init (lua_State *L1, lua_State *L) {
   /* initialize CallInfo array */
@@ -113,6 +115,7 @@ static void close_state (lua_State *L) {
   freestack(L, L);
   lua_assert(g->totalbytes == sizeof(LG));
   (*g->frealloc)(g->ud, fromstate(L), state_size(LG), 0);
+  _lua_freelock(g->lock);
 }
 
 
@@ -178,6 +181,7 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud) {
   g->gcpause = LUAI_GCPAUSE;
   g->gcstepmul = LUAI_GCMUL;
   g->gcdept = 0;
+  g->lock = _lua_newlock();
   for (i=0; i<NUM_TAGS; i++) g->mt[i] = NULL;
   if (luaD_rawrunprotected(L, f_luaopen, NULL) != 0) {
     /* memory allocation error: free partial state */

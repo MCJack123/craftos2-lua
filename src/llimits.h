@@ -105,6 +105,11 @@ typedef lu_int32 Instruction;
 #define LUA_MINBUFFER	32
 #endif
 
+/* Use external C++ locks to help with multi-threading */
+extern void _lua_lock(lua_State *L);
+extern void _lua_unlock(lua_State *L);
+#define lua_lock _lua_lock
+#define lua_unlock _lua_unlock
 
 #ifndef lua_lock
 #define lua_lock(L)     ((void) 0) 

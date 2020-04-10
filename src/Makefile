@@ -8,6 +8,7 @@
 PLAT= none
 
 CC?= gcc
+CXX?= g++
 CFLAGS= -Wall -g $(MYCFLAGS)
 AR= ar rcu
 RANLIB= ranlib
@@ -25,7 +26,7 @@ PLATS= aix ansi bsd freebsd generic linux macosx mingw posix solaris emscripten
 LUA_A=	liblua.a
 CORE_O=	lapi.o lcode.o ldebug.o ldo.o ldump.o lfunc.o lgc.o llex.o lmem.o \
 	lobject.o lopcodes.o lparser.o lstate.o lstring.o ltable.o ltm.o  \
-	lundump.o lvm.o lzio.o
+	lundump.o lvm.o lzio.o llock.o
 LIB_O=	lauxlib.o lbaselib.o ldblib.o liolib.o lmathlib.o loslib.o ltablib.o \
 	lstrlib.o loadlib.o linit.o lutf8lib.o
 
@@ -181,5 +182,6 @@ lzio.o: lzio.c lua.h luaconf.h llimits.h lmem.h lstate.h lobject.h ltm.h \
   lzio.h
 print.o: print.c ldebug.h lstate.h lua.h luaconf.h lobject.h llimits.h \
   ltm.h lzio.h lmem.h lopcodes.h lundump.h
+llock.o: llock.cpp lua.h luaconf.h lstate.h
 
 # (end of Makefile)
