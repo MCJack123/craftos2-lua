@@ -114,8 +114,8 @@ static void close_state (lua_State *L) {
   luaZ_freebuffer(L, &g->buff);
   freestack(L, L);
   lua_assert(g->totalbytes == sizeof(LG));
-  (*g->frealloc)(g->ud, fromstate(L), state_size(LG), 0);
   _lua_freelock(g->lock);
+  (*g->frealloc)(g->ud, fromstate(L), state_size(LG), 0);
 }
 
 
