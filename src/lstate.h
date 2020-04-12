@@ -94,6 +94,7 @@ typedef struct global_State {
   struct Table *mt[NUM_TAGS];  /* metatables for basic types */
   TString *tmname[TM_N];  /* array with tag-method names */
   void *lock;  /* pointer to lock */
+  int lockstate;  /* 0 = unlocked, 1 = locked */
 } global_State;
 
 

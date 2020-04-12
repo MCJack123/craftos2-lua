@@ -9,10 +9,12 @@ extern "C" {
 extern "C" {
     void _lua_lock(lua_State *L) {
         ((std::mutex*)G(L)->lock)->lock();
+        G(L)->lockstate = 1;
     }
 
     void _lua_unlock(lua_State *L) {
         ((std::mutex*)G(L)->lock)->unlock();
+        G(L)->lockstate = 0;
     }
 
     void * _lua_newlock() {

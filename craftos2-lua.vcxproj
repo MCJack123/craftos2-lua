@@ -70,8 +70,8 @@
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(SolutionDir)src\</OutDir>
-    <TargetName>lua51</TargetName>
+    <OutDir>$(SolutionDir)craftos2-lua\src\</OutDir>
+    <TargetName>lua51d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)craftos2-lua\src\</OutDir>
@@ -110,6 +110,9 @@
     <ClCompile>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
+    <Lib>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -130,6 +133,7 @@
     <ClCompile Include="src\linit.c" />
     <ClCompile Include="src\liolib.c" />
     <ClCompile Include="src\llex.c" />
+    <ClCompile Include="src\llock.cpp" />
     <ClCompile Include="src\lmathlib.c" />
     <ClCompile Include="src\lmem.c" />
     <ClCompile Include="src\loadlib.c" />

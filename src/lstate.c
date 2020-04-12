@@ -114,6 +114,7 @@ static void close_state (lua_State *L) {
   luaZ_freebuffer(L, &g->buff);
   freestack(L, L);
   lua_assert(g->totalbytes == sizeof(LG));
+  if (g->lockstate) lua_unlock(L);
   _lua_freelock(g->lock);
   (*g->frealloc)(g->ud, fromstate(L), state_size(LG), 0);
 }
@@ -182,6 +183,7 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud) {
   g->gcstepmul = LUAI_GCMUL;
   g->gcdept = 0;
   g->lock = _lua_newlock();
+  g->lockstate = 0;
   for (i=0; i<NUM_TAGS; i++) g->mt[i] = NULL;
   if (luaD_rawrunprotected(L, f_luaopen, NULL) != 0) {
     /* memory allocation error: free partial state */
