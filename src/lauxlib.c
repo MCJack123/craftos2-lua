@@ -328,6 +328,19 @@ LUALIB_API int luaL_getn (lua_State *L, int t) {
   lua_pushvalue(L, t);
   lua_rawget(L, -2);
   if ((n = checkint(L, 2)) >= 0) return n;
+  if (lua_getmetatable(L, t) && lua_istable(L, -1)) { /* else try __len metamethod */
+    lua_getfield(L, -1, "__len");
+    if (lua_isfunction(L, -1)) {
+      lua_pushvalue(L, t);
+      lua_call(L, 1, 1);
+      if (lua_isnumber(L, -1)) {
+        n = lua_tointeger(L, -1);
+        lua_pop(L, 2);
+        return n;
+      }
+    }
+    lua_pop(L, 2);
+  }
   return (int)lua_objlen(L, t);
 }
 
