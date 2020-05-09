@@ -324,10 +324,10 @@ LUALIB_API int luaL_getn (lua_State *L, int t) {
   lua_pushliteral(L, "n");  /* try t.n */
   lua_rawget(L, t);
   if ((n = checkint(L, 1)) >= 0) return n;
-  getsizes(L);  /* else try sizes[t] */
+  /*getsizes(L);  * else try sizes[t] *
   lua_pushvalue(L, t);
   lua_rawget(L, -2);
-  if ((n = checkint(L, 2)) >= 0) return n;
+  if ((n = checkint(L, 2)) >= 0) return n;*/
   if (lua_getmetatable(L, t) && lua_istable(L, -1)) { /* else try __len metamethod */
     lua_getfield(L, -1, "__len");
     if (lua_isfunction(L, -1)) {
