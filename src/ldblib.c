@@ -127,8 +127,12 @@ static int db_getinfo (lua_State *L) {
   }
   if (strchr(options, 'l'))
     settabsi(L, "currentline", ar.currentline);
-  if (strchr(options, 'u'))
+  if (strchr(options, 'u')) {
     settabsi(L, "nups", ar.nups);
+    settabsi(L, "nparams", ar.nparams);
+    lua_pushboolean(L, ar.isvararg);
+    lua_setfield(L, -2, "isvararg");
+  }
   if (strchr(options, 'n')) {
     settabss(L, "name", ar.name);
     settabss(L, "namewhat", ar.namewhat);
@@ -146,18 +150,29 @@ static int db_getlocal (lua_State *L) {
   lua_State *L1 = getthread(L, &arg);
   lua_Debug ar;
   const char *name;
-  if (!lua_getstack(L1, luaL_checkint(L, arg+1), &ar))  /* out of range? */
-    return luaL_argerror(L, arg+1, "level out of range");
-  name = lua_getlocal(L1, &ar, luaL_checkint(L, arg+2));
-  if (name) {
-    lua_xmove(L1, L, 1);
-    lua_pushstring(L, name);
-    lua_pushvalue(L, -2);
-    return 2;
-  }
-  else {
-    lua_pushnil(L);
+  if (lua_isfunction(L, arg+1)) {
+    lua_pushvalue(L, arg+1);
+    lua_xmove(L, L1, 1);
+    name = lua_getlocal(L1, NULL, luaL_checkint(L, arg+2));
+    if (name)
+      lua_pushstring(L, name);
+    else
+      lua_pushnil(L);
     return 1;
+  } else {
+    if (!lua_getstack(L1, luaL_checkint(L, arg+1), &ar))  /* out of range? */
+      return luaL_argerror(L, arg+1, "level out of range");
+    name = lua_getlocal(L1, &ar, luaL_checkint(L, arg+2));
+    if (name) {
+      lua_xmove(L1, L, 1);
+      lua_pushstring(L, name);
+      lua_pushvalue(L, -2);
+      return 2;
+    }
+    else {
+      lua_pushnil(L);
+      return 1;
+    }
   }
 }
 
