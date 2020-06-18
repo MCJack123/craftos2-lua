@@ -330,7 +330,7 @@ static const char *start_capture (MatchState *ms, const char *s,
                                     const char *p, int what) {
   const char *res;
   int level = ms->level;
-  if (level >= LUA_MAXCAPTURES) luaL_error(ms->L, "too many captures");
+  if (level >= LUA_MAXCAPTURES) { luaL_error(ms->L, "too many captures"); return NULL; }
   ms->capture[level].init = s;
   ms->capture[level].len = what;
   ms->level = level+1;
