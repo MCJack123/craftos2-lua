@@ -338,6 +338,10 @@ static int db_errorfb (lua_State *L) {
     level = (L == L1) ? 1 : 0;  /* level 0 may be this own function */
   if (lua_gettop(L) == arg)
     lua_pushliteral(L, "");
+  else if (lua_isnil(L, arg+1)) {
+    lua_pushliteral(L, "");
+    lua_replace(L, arg+1);
+  }
   else if (!lua_isstring(L, arg+1)) return 1;  /* message is not a string */
   else lua_pushliteral(L, "\n");
   lua_pushliteral(L, "stack traceback:");
