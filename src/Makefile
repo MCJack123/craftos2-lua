@@ -10,6 +10,7 @@ PLAT= none
 CC?= gcc
 CXX?= g++
 CFLAGS= -Wall -g -O2 $(MYCFLAGS)
+CXXFLAGS= $(CFLAGS) 
 AR= ar rcu
 RANLIB= ranlib
 RM= rm -f
