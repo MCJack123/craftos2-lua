@@ -692,9 +692,23 @@ static int str_gsub (lua_State *L) {
 */
 #define MAX_FORMAT	(sizeof(FLAGS) + sizeof(LUA_INTFRMLEN) + 10)
 
+LUALIB_API const char *luaL_checklstring_nil(lua_State *L, int narg, size_t *len) {
+  if (lua_isnil(L, narg)) {
+    if (len != NULL) *len = 3;
+    return "nil";
+  }
+  const char *s = lua_tolstring(L, narg, len);
+  if (!s) luaL_typerror(L, narg, lua_typename(L, LUA_TSTRING));
+  return s;
+}
+
 
 static void addquoted (lua_State *L, luaL_Buffer *b, int arg) {
   size_t l;
+  if (lua_isnil(L, arg)) {
+    luaL_addstring(b, "nil");
+    return;
+  }
   const char *s = luaL_checklstring(L, arg, &l);
   luaL_addchar(b, '"');
   while (l--) {
@@ -798,7 +812,7 @@ static int str_format (lua_State *L) {
         }
         case 's': {
           size_t l;
-          const char *s = luaL_checklstring(L, arg, &l);
+          const char *s = luaL_checklstring_nil(L, arg, &l);
           if (!strchr(form, '.') && l >= 100) {
             /* no precision and string is too long to be formatted;
                keep original string */

@@ -432,7 +432,7 @@
 ** arbitrary; its only purpose is to stop infinite recursion before
 ** exhausting memory.
 */
-#define LUAI_MAXCALLS	256
+#define LUAI_MAXCALLS	32768
 
 
 /*
