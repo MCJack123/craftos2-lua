@@ -301,7 +301,7 @@ static int read_line (lua_State *L, FILE *f, int keepnl) {
     if (l == 0 || p[l-1] != '\n')
       luaL_addsize(&b, l);
     else {
-      luaL_addsize(&b, l - !keepnl);  /* do not include `eol' unless asked for */
+      luaL_addsize(&b, keepnl ? l : l - 1);  /* do not include `eol' unless asked for */
       luaL_pushresult(&b);  /* close buffer */
       return 1;  /* read at least an `eol' */
     }
