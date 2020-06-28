@@ -167,6 +167,7 @@ static int io_tostring (lua_State *L) {
 
 static int io_open (lua_State *L) {
   if (!lua_isstring(L, 1)) luaL_error(L, "bad argument #1 (expected string, got %s)", lua_typename(L, lua_type(L, 1)));
+  if (!lua_isstring(L, 2) && !lua_isnoneornil(L, 2)) luaL_error(L, "bad argument #2 (expected string, got %s)", lua_typename(L, lua_type(L, 2)));
   const char *filename = luaL_checkstring(L, 1);
   const char *mode = luaL_optstring(L, 2, "r");
   FILE **pf = newfile(L);
@@ -357,8 +358,9 @@ static int g_read (lua_State *L, FILE *f, int first) {
       }
       else {
         const char *p = lua_tostring(L, n);
-        luaL_argcheck(L, p && p[0] == '*', n, "invalid option");
-        switch (p[1]) {
+        luaL_argcheck(L, p, n, "invalid option");
+        if (*p == '*') p++;
+        switch (*p) {
           case 'n':  /* number */
             success = read_number(L, f);
             break;
