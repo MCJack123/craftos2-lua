@@ -225,7 +225,7 @@ static int io_readline (lua_State *L);
 
 static void aux_lines (lua_State *L, int idx, int toclose) {
   int n, i;
-  for (n = 1; lua_isstring(L, idx + n); n++);
+  for (n = 1; lua_isstring(L, idx + n) || lua_isnumber(L, idx + n); n++);
   lua_pushvalue(L, idx);
   lua_pushboolean(L, toclose);  /* close/not close file when finished */
   if (n == 1) {
@@ -254,6 +254,7 @@ static int io_lines (lua_State *L) {
   if (lua_isnoneornil(L, 1)) {  /* no arguments? */
     /* will iterate over default input */
     lua_rawgeti(L, LUA_ENVIRONINDEX, IO_INPUT);
+    lua_replace(L, 1);
     return f_lines(L);
   }
   else {
@@ -418,25 +419,30 @@ static int io_readline (lua_State *L) {
   if (f == NULL)  /* file is already closed? */
     return luaL_error(L, "file is already closed");
   for (i = 0; i < lua_tointeger(L, lua_upvalueindex(3)); i++) {
-    p = lua_tostring(L, lua_upvalueindex(i + 4));
-    if (p == NULL) return luaL_error(L, "invalid option #%d to 'lines'", i + 1);
-    if (*p == '*') p++;
-    switch (*p) {
-      case 'n':  /* number */
-        success = read_number(L, f);
-        break;
-      case 'l':  /* line */
-        success = read_line(L, f, 0);
-        break;
-      case 'L':  /* line (with newline) */
-        success = read_line(L, f, 1);
-        break;
-      case 'a':  /* file */
-        read_chars(L, f, ~((size_t)0));  /* read MAX_SIZE_T chars */
-        success = 1; /* always success */
-        break;
-      default:
-        return luaL_error(L, "invalid format #%d to 'lines'", i + 1);
+    if (lua_isnumber(L, lua_upvalueindex(i + 4))) {
+      size_t l = (size_t)lua_tointeger(L, lua_upvalueindex(i + 4));
+      success = (l == 0) ? test_eof(L, f) : read_chars(L, f, l);
+    } else {
+      p = lua_tostring(L, lua_upvalueindex(i + 4));
+      if (p == NULL) return luaL_error(L, "invalid option #%d to 'lines'", i + 1);
+      if (*p == '*') p++;
+      switch (*p) {
+        case 'n':  /* number */
+          success = read_number(L, f);
+          break;
+        case 'l':  /* line */
+          success = read_line(L, f, 0);
+          break;
+        case 'L':  /* line (with newline) */
+          success = read_line(L, f, 1);
+          break;
+        case 'a':  /* file */
+          read_chars(L, f, ~((size_t)0));  /* read MAX_SIZE_T chars */
+          success = 1; /* always success */
+          break;
+        default:
+          return luaL_error(L, "invalid format #%d to 'lines'", i + 1);
+      }
     }
     if (ferror(f))
       return luaL_error(L, "%s", strerror(errno));
@@ -446,7 +452,7 @@ static int io_readline (lua_State *L) {
         lua_pushvalue(L, lua_upvalueindex(1));
         aux_close(L);  /* close it */
       }
-      return i;
+      return 0;
     }
   }
   return i;
