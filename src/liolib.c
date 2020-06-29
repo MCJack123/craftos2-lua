@@ -224,14 +224,23 @@ static int io_readline (lua_State *L);
 
 
 static void aux_lines (lua_State *L, int idx, int toclose) {
+  int n, i;
+  for (n = 1; lua_isstring(L, idx + n); n++);
   lua_pushvalue(L, idx);
   lua_pushboolean(L, toclose);  /* close/not close file when finished */
-  lua_pushcclosure(L, io_readline, 2);
+  if (n == 1) {
+    lua_pushinteger(L, n++);
+    lua_pushstring(L, "*l");
+  } else {
+    lua_pushinteger(L, n - 1);
+    for (i = 1; i < n; i++) lua_pushvalue(L, idx + i);
+  }
+  lua_pushcclosure(L, io_readline, n + 2);
 }
 
 
 static int f_lines (lua_State *L) {
-  if (isstdfile(L, -1)) {
+  if (isstdfile(L, 1)) {
     lua_getglobal(L, "read");
   } else {
     tofile(L);  /* check that it's a valid file handle */
@@ -248,12 +257,14 @@ static int io_lines (lua_State *L) {
     return f_lines(L);
   }
   else {
+    int i;
     const char *filename = luaL_checkstring(L, 1);
     FILE **pf = newfile(L);
     *pf = fopen(filename, "r");
     if (*pf == NULL)
       fileerror(L, 1, filename);
-    aux_lines(L, lua_gettop(L), 1);
+    lua_replace(L, 1);
+    aux_lines(L, 1, 1);
     return 1;
   }
 }
@@ -402,21 +413,43 @@ static int f_read (lua_State *L) {
 
 static int io_readline (lua_State *L) {
   FILE *f = *(FILE **)lua_touserdata(L, lua_upvalueindex(1));
-  int sucess;
+  int success, i;
+  const char * p;
   if (f == NULL)  /* file is already closed? */
     return luaL_error(L, "file is already closed");
-  sucess = read_line(L, f, 0);
-  if (ferror(f))
-    return luaL_error(L, "%s", strerror(errno));
-  if (sucess) return 1;
-  else {  /* EOF */
-    if (lua_toboolean(L, lua_upvalueindex(2))) {  /* generator created file? */
-      lua_settop(L, 0);
-      lua_pushvalue(L, lua_upvalueindex(1));
-      aux_close(L);  /* close it */
+  for (i = 0; i < lua_tointeger(L, lua_upvalueindex(3)); i++) {
+    p = lua_tostring(L, lua_upvalueindex(i + 4));
+    if (p == NULL) return luaL_error(L, "invalid option #%d to 'lines'", i + 1);
+    if (*p == '*') p++;
+    switch (*p) {
+      case 'n':  /* number */
+        success = read_number(L, f);
+        break;
+      case 'l':  /* line */
+        success = read_line(L, f, 0);
+        break;
+      case 'L':  /* line (with newline) */
+        success = read_line(L, f, 1);
+        break;
+      case 'a':  /* file */
+        read_chars(L, f, ~((size_t)0));  /* read MAX_SIZE_T chars */
+        success = 1; /* always success */
+        break;
+      default:
+        return luaL_error(L, "invalid format #%d to 'lines'", i + 1);
     }
-    return 0;
+    if (ferror(f))
+      return luaL_error(L, "%s", strerror(errno));
+    if (!success) {  /* EOF */
+      if (lua_toboolean(L, lua_upvalueindex(2))) {  /* generator created file? */
+        lua_settop(L, 0);
+        lua_pushvalue(L, lua_upvalueindex(1));
+        aux_close(L);  /* close it */
+      }
+      return i;
+    }
   }
+  return i;
 }
 
 /* }====================================================== */
