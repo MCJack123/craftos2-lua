@@ -5,14 +5,23 @@ extern "C" {
 #include "lstate.h"
 }
 #include <mutex>
+#include <stdio.h>
 
 extern "C" {
     void _lua_lock(lua_State *L) {
+        if (G(L)->lockstate) {
+            //fprintf(stderr, "Attempted to lock a thread twice!\n");
+            return;
+        }
         ((std::mutex*)G(L)->lock)->lock();
         G(L)->lockstate = 1;
     }
 
     void _lua_unlock(lua_State *L) {
+        if (!G(L)->lockstate) {
+            //fprintf(stderr, "Attempted to unlock a thread twice!\n");
+            return;
+        }
         ((std::mutex*)G(L)->lock)->unlock();
         G(L)->lockstate = 0;
     }
