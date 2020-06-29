@@ -240,7 +240,7 @@ static void aux_lines (lua_State *L, int idx, int toclose) {
 
 
 static int f_lines (lua_State *L) {
-  if (isstdfile(L, 1)) {
+  if (isstdfile(L, 1) || lua_isnoneornil(L, 1)) {
     lua_getglobal(L, "read");
   } else {
     tofile(L);  /* check that it's a valid file handle */
