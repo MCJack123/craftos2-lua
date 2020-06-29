@@ -283,13 +283,6 @@ static int luaB_loadstring (lua_State *L) {
   size_t l;
   const char *s = luaL_checklstring(L, 1, &l);
   const char *chunkname = luaL_optstring(L, 2, s);
-  if (chunkname != s && chunkname[0] != '@' && chunkname[0] != '=') {
-      lua_pushstring(L, "=");
-      lua_pushvalue(L, 2);
-      lua_concat(L, 2);
-      lua_replace(L, 2);
-      chunkname = luaL_optstring(L, 2, s);
-  }
   return load_aux(L, luaL_loadbuffer(L, s, l, chunkname));
 }
 
