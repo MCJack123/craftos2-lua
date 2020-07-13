@@ -528,7 +528,7 @@ static int resume_error (lua_State *L, const char *msg) {
  LUA_API int lua_resume (lua_State *L, int nargs) {
   Pfunc pf;
   void *ud;
-   int status;
+   int status, old_nCcalls;
    lua_lock(L);
    if (L->nCcalls >= LUAI_MAXCCALLS*8)
     return resume_error(L, "C stack overflow");
@@ -550,8 +550,9 @@ static int resume_error (lua_State *L, const char *msg) {
   lua_assert(cast(StkId, ud) >= L->base);
   if (L->hookmask & LUA_MASKRESUME)
     luaD_callhook(L, LUA_HOOKRESUME, -1);
+  old_nCcalls = L->nCcalls;
   for (;;) {
-    L->baseCcalls = (L->nCcalls = (L->nCcalls & ~7) + 8);
+    L->baseCcalls = (L->nCcalls = (old_nCcalls & ~7) + 8);
     status = luaD_rawrunprotected(L, pf, ud);
     if (status <= LUA_YIELD)
       break;
@@ -563,7 +564,7 @@ static int resume_error (lua_State *L, const char *msg) {
     pf = f_continue;
     ud = (void *)(ptrdiff_t)0;  /* (void *)saveci(L, L->base_ci); */
    }
-  L->nCcalls = ((L->nCcalls & ~7) - 1) | LUA_NOYIELD | LUA_NOVPCALL;
+  L->baseCcalls = L->nCcalls = ((old_nCcalls & ~7)) | LUA_NOYIELD | LUA_NOVPCALL;
   L->status = status;
    lua_unlock(L);
    return status;
