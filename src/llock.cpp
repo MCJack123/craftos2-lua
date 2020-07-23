@@ -9,10 +9,6 @@ extern "C" {
 
 extern "C" {
     void _lua_lock(lua_State *L) {
-        if (G(L)->lockstate) {
-            //fprintf(stderr, "Attempted to lock a thread twice!\n");
-            return;
-        }
         ((std::mutex*)G(L)->lock)->lock();
         G(L)->lockstate = 1;
     }
