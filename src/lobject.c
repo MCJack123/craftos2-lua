@@ -101,8 +101,9 @@ int luaO_str2d (const char *s, lua_Number *result) {
 
 
 
-static void pushstr (lua_State *L, const char *str) {
-  setsvalue2s(L, L->top, luaS_new(L, str));
+static void pushstr (lua_State *L, const char *str, int len) {
+  if (len == 0) { setsvalue2s(L, L->top, luaS_new(L, str)); }
+  else { setsvalue2s(L, L->top, luaS_newlstr(L, str, len)); }
   incr_top(L);
 }
 
@@ -128,7 +129,7 @@ int luaO_utf8esc(char *buff, unsigned long x) {
 /* this function handles only `%d', `%c', %f, %p, and `%s' formats */
 const char *luaO_pushvfstring (lua_State *L, const char *fmt, va_list argp) {
   int n = 1;
-  pushstr(L, "");
+  pushstr(L, "", 0);
   for (;;) {
     const char *e = strchr(fmt, '%');
     if (e == NULL) break;
@@ -138,14 +139,14 @@ const char *luaO_pushvfstring (lua_State *L, const char *fmt, va_list argp) {
       case 's': {
         const char *s = va_arg(argp, char *);
         if (s == NULL) s = "(null)";
-        pushstr(L, s);
+        pushstr(L, s, 0);
         break;
       }
       case 'c': {
         char buff[2];
         buff[0] = cast(char, va_arg(argp, int));
         buff[1] = '\0';
-        pushstr(L, buff);
+        pushstr(L, buff, 1);
         break;
       }
       case 'd': {
@@ -161,7 +162,7 @@ const char *luaO_pushvfstring (lua_State *L, const char *fmt, va_list argp) {
       case 'p': {
         char buff[4*sizeof(void *) + 8]; /* should be enough space for a `%p' */
         sprintf(buff, "%p", va_arg(argp, void *));
-        pushstr(L, buff);
+        pushstr(L, buff, 0);
         break;
       }
       case 'U': {  /* an 'int' as a UTF-8 sequence */
@@ -171,7 +172,7 @@ const char *luaO_pushvfstring (lua_State *L, const char *fmt, va_list argp) {
           break;
       }
       case '%': {
-        pushstr(L, "%");
+        pushstr(L, "%", 1);
         break;
       }
       default: {
@@ -179,14 +180,14 @@ const char *luaO_pushvfstring (lua_State *L, const char *fmt, va_list argp) {
         buff[0] = '%';
         buff[1] = *(e+1);
         buff[2] = '\0';
-        pushstr(L, buff);
+        pushstr(L, buff, 2);
         break;
       }
     }
     n += 2;
     fmt = e+2;
   }
-  pushstr(L, fmt);
+  pushstr(L, fmt, 0);
   luaV_concat(L, n+1, cast_int(L->top - L->base) - 1);
   L->top -= n;
   return svalue(L->top - 1);
