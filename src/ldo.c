@@ -409,6 +409,8 @@ int luaD_precall (lua_State *L, StkId func, int nresults) {
     CallInfo *ci;
     int n;
     luaD_checkstack(L, LUA_MINSTACK);  /* ensure minimum stack size */
+    if (cl->c.f == NULL)  /* error if the function is NULL */
+      luaG_runerror(L, "attempt to call invalid C function");
     ci = inc_ci(L);  /* now `enter' new function */
     ci->func = restorestack(L, funcr);
     L->base = ci->base = ci->func + 1;
