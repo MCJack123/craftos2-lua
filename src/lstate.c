@@ -100,6 +100,7 @@ static void preinit_state (lua_State *L, global_State *g) {
   L->status = 0;
   L->base_ci = L->ci = NULL;
   L->ctx = NULL;
+  L->errfunc = 0;
   setnilvalue(gt(L));
 }
 
