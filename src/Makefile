@@ -11,7 +11,7 @@ CC?= gcc
 CXX?= g++
 CFLAGS= -Wall -g -O2 $(MYCFLAGS)
 CXXFLAGS= $(CFLAGS) 
-AR?= ar rcu
+MYAR?= ar rcu
 RANLIB?= ranlib
 RM= rm -f
 LIBS= -lm $(MYLIBS)
@@ -50,7 +50,7 @@ o:	$(ALL_O)
 a:	$(ALL_A)
 
 $(LUA_A): $(CORE_O) $(LIB_O)
-	$(AR) $@ $(CORE_O) $(LIB_O)
+	$(MYAR) $@ $(CORE_O) $(LIB_O)
 	$(RANLIB) $@
 
 $(LUA_T): $(LUA_O) $(LUA_A)
@@ -69,7 +69,7 @@ echo:
 	@echo "PLAT = $(PLAT)"
 	@echo "CC = $(CC)"
 	@echo "CFLAGS = $(CFLAGS)"
-	@echo "AR = $(AR)"
+	@echo "AR = $(MYAR)"
 	@echo "RANLIB = $(RANLIB)"
 	@echo "RM = $(RM)"
 	@echo "MYCFLAGS = $(MYCFLAGS)"
@@ -118,7 +118,7 @@ solaris:
 	$(MAKE) all MYCFLAGS="-DLUA_USE_POSIX -DLUA_USE_DLOPEN" MYLIBS="-ldl"
 
 emscripten:
-	$(MAKE) all CC=" emcc" CXX=" em++" AR=" emar rcu" RANLIB=" emranlib" MYCFLAGS="-DLUA_USE_LINUX -fPIC" MYLIBS="-Wl,-E -ldl -lreadline -lhistory -lncurses"
+	$(MAKE) all CC=" emcc" CXX=" em++" MYAR=" emar rcu" RANLIB=" emranlib" MYCFLAGS="-DLUA_USE_LINUX -fPIC" MYLIBS="-Wl,-E -ldl -lreadline -lhistory -lncurses"
 
 # list targets that do not create files (but not all makes understand .PHONY)
 .PHONY: all $(PLATS) default o a clean depend echo none
