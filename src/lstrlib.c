@@ -32,7 +32,7 @@
 #define MAXSIZE  \
         (sizeof(size_t) < sizeof(int) ? MAX_SIZET : (size_t)(INT_MAX))
 
-typedef uintptr_t lua_Unsigned;
+typedef size_t lua_Unsigned;
 
 
 
