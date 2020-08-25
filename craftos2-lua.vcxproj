@@ -124,6 +124,7 @@
     <ClCompile Include="src\lapi.c" />
     <ClCompile Include="src\lauxlib.c" />
     <ClCompile Include="src\lbaselib.c" />
+    <ClCompile Include="src\lbitlib.c" />
     <ClCompile Include="src\lcode.c" />
     <ClCompile Include="src\ldblib.c" />
     <ClCompile Include="src\ldebug.c" />
