@@ -219,7 +219,6 @@ resume:
 
 static void auxsort (lua_State *L, struct table_sort_state * s, struct table_sort_args * a, int m) {
   void * ud = NULL;
-  int ai;
   lua_Alloc alloc = lua_getallocf(L, &ud);
   if (!s->s) s->d++;
   if (s->d > m) {

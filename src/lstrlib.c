@@ -620,35 +620,50 @@ static void add_s (MatchState *ms, luaL_Buffer *b, const char *s,
 }
 
 
-static void add_value (MatchState *ms, luaL_Buffer *b, const char *s,
-                                                       const char *e) {
-  lua_State *L = ms->L;
+struct string_gsub_state {
+  MatchState ms;
+  luaL_Buffer b;
+  int n;
+  const char * e;
+  int max_s;
+  int res;
+};
+
+static void add_value (struct string_gsub_state * st, const char *s) {
+  lua_State *L = st->ms.L;
+  if (st->res) {
+    st->res = 0;
+    goto resume;
+  }
   switch (lua_type(L, 3)) {
     case LUA_TNUMBER:
     case LUA_TSTRING: {
-      add_s(ms, b, s, e);
+      add_s(&st->ms, &st->b, s, st->e);
       return;
     }
     case LUA_TFUNCTION: {
       int n;
       lua_pushvalue(L, 3);
-      n = push_captures(ms, s, e);
-      lua_call(L, n, 1);
+      n = push_captures(&st->ms, s, st->e);
+      st->res = 1;
+      lua_vcall(L, n, 1, st);
+      st->res = 0;
       break;
     }
     case LUA_TTABLE: {
-      push_onecapture(ms, 0, s, e);
+      push_onecapture(&st->ms, 0, s, st->e);
       lua_gettable(L, 3);
       break;
     }
   }
+resume:
   if (!lua_toboolean(L, -1)) {  /* nil or false? */
     lua_pop(L, 1);
-    lua_pushlstring(L, s, e - s);  /* keep original text */
+    lua_pushlstring(L, s, st->e - s);  /* keep original text */
   }
   else if (!lua_isstring(L, -1))
     luaL_error(L, "invalid replacement value (a %s)", luaL_typename(L, -1)); 
-  luaL_addvalue(b);  /* add result to accumulator */
+  luaL_addvalue(&st->b);  /* add result to accumulator */
 }
 
 
@@ -657,36 +672,44 @@ static int str_gsub (lua_State *L) {
   const char *src = luaL_checklstring(L, 1, &srcl);
   const char *p = luaL_checkstring(L, 2);
   int  tr = lua_type(L, 3);
-  int max_s = luaL_optint(L, 4, srcl+1);
   int anchor = (*p == '^') ? (p++, 1) : 0;
-  int n = 0;
-  MatchState ms;
-  luaL_Buffer b;
+  void * ud = NULL;
+  struct string_gsub_state * s;
+  lua_Alloc alloc = lua_getallocf(L, &ud);
+  if (lua_vcontext(L)) {
+    s = lua_vcontext(L);
+    goto resume;
+  }
+  s = (struct string_gsub_state*)alloc(ud, NULL, 0, sizeof(struct string_gsub_state));
+  s->n = 0;
+  s->res = 0;
+  s->max_s = luaL_optint(L, 4, srcl + 1);
   luaL_argcheck(L, tr == LUA_TNUMBER || tr == LUA_TSTRING ||
                    tr == LUA_TFUNCTION || tr == LUA_TTABLE, 3,
                       "string/function/table expected");
-  luaL_buffinit(L, &b);
-  ms.L = L;
-  ms.src_init = src;
-  ms.src_end = src+srcl;
-  while (n < max_s) {
-    const char *e;
-    ms.level = 0;
-    e = match(&ms, src, p);
-    if (e) {
-      n++;
-      add_value(&ms, &b, src, e);
+  luaL_buffinit(L, &s->b);
+  s->ms.L = L;
+  s->ms.src_init = src;
+  s->ms.src_end = src+srcl;
+  while (s->n < s->max_s) {
+    s->ms.level = 0;
+    s->e = match(&s->ms, src, p);
+    if (s->e) {
+      s->n++;
+resume:
+      add_value(s, src);
     }
-    if (e && e>src) /* non empty match? */
-      src = e;  /* skip it */
-    else if (src < ms.src_end)
-      luaL_addchar(&b, *src++);
+    if (s->e && s->e>src) /* non empty match? */
+      src = s->e;  /* skip it */
+    else if (src < s->ms.src_end)
+      luaL_addchar(&s->b, *src++);
     else break;
     if (anchor) break;
   }
-  luaL_addlstring(&b, src, ms.src_end-src);
-  luaL_pushresult(&b);
-  lua_pushinteger(L, n);  /* number of substitutions */
+  luaL_addlstring(&s->b, src, s->ms.src_end-src);
+  luaL_pushresult(&s->b);
+  lua_pushinteger(L, s->n);  /* number of substitutions */
+  alloc(ud, s, sizeof(struct string_gsub_state), 0);
   return 2;
 }
 
