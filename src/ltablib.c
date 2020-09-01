@@ -184,91 +184,151 @@ static void set2 (lua_State *L, int i, int j) {
   lua_rawseti(L, 1, j);
 }
 
-static int sort_comp (lua_State *L, int a, int b) {
+struct table_sort_args {
+    int l;
+    int u;
+    struct table_sort_args * next;
+};
+
+struct table_sort_state {
+    int s;
+    int d;
+    int i;
+    int j;
+    struct table_sort_args * args;
+};
+
+static int sort_comp (lua_State *L, int a, int b, struct table_sort_state * s, int ss) {
   if (!lua_isnil(L, 2)) {  /* function? */
     int res;
+    if (s->s) goto resume;
+    s->s = ss;
     lua_pushvalue(L, 2);
     lua_pushvalue(L, a-1);  /* -1 to compensate function */
     lua_pushvalue(L, b-2);  /* -2 to compensate function and `a' */
-    lua_call(L, 2, 1);
+    lua_vcall(L, 2, 1, s);
+resume:
     res = lua_toboolean(L, -1);
     lua_pop(L, 1);
+    s->s = 0;
     return res;
   }
   else  /* a < b? */
     return lua_lessthan(L, a, b);
 }
 
-static void auxsort (lua_State *L, int l, int u) {
-  while (l < u) {  /* for tail recursion */
-    int i, j;
+static void auxsort (lua_State *L, struct table_sort_state * s, struct table_sort_args * a, int m) {
+  void * ud = NULL;
+  int ai;
+  lua_Alloc alloc = lua_getallocf(L, &ud);
+  if (!s->s) s->d++;
+  if (s->d > m) {
+    auxsort(L, s, a->next, m + 1);
+    alloc(ud, a->next, sizeof(struct table_sort_args), 0);
+    a->next = NULL;
+  }
+  while (a->l < a->u) {  /* for tail recursion */
+    switch (s->s) {
+      case 1: goto resume1;
+      case 2: goto resume2;
+      case 3: goto resume3;
+      case 4: goto resume4;
+      case 5: goto resume5;
+    }
     /* sort elements a[l], a[(l+u)/2] and a[u] */
-    lua_rawgeti(L, 1, l);
-    lua_rawgeti(L, 1, u);
-    if (sort_comp(L, -1, -2))  /* a[u] < a[l]? */
-      set2(L, l, u);  /* swap a[l] - a[u] */
+    lua_rawgeti(L, 1, a->l);
+    lua_rawgeti(L, 1, a->u);
+resume1:
+    if (sort_comp(L, -1, -2, s, 1))  /* a[u] < a[l]? */
+      set2(L, a->l, a->u);  /* swap a[l] - a[u] */
     else
       lua_pop(L, 2);
-    if (u-l == 1) break;  /* only 2 elements */
-    i = (l+u)/2;
-    lua_rawgeti(L, 1, i);
-    lua_rawgeti(L, 1, l);
-    if (sort_comp(L, -2, -1))  /* a[i]<a[l]? */
-      set2(L, i, l);
+    if (a->u-a->l == 1) break;  /* only 2 elements */
+    s->i = (a->l+a->u)/2;
+    lua_rawgeti(L, 1, s->i);
+    lua_rawgeti(L, 1, a->l);
+resume2:
+    if (sort_comp(L, -2, -1, s, 2))  /* a[i]<a[l]? */
+      set2(L, s->i, a->l);
     else {
       lua_pop(L, 1);  /* remove a[l] */
-      lua_rawgeti(L, 1, u);
-      if (sort_comp(L, -1, -2))  /* a[u]<a[i]? */
-        set2(L, i, u);
+      lua_rawgeti(L, 1, a->u);
+resume3:
+      if (sort_comp(L, -1, -2, s, 3))  /* a[u]<a[i]? */
+        set2(L, s->i, a->u);
       else
         lua_pop(L, 2);
     }
-    if (u-l == 2) break;  /* only 3 elements */
-    lua_rawgeti(L, 1, i);  /* Pivot */
+    if (a->u-a->l == 2) break;  /* only 3 elements */
+    lua_rawgeti(L, 1, s->i);  /* Pivot */
     lua_pushvalue(L, -1);
-    lua_rawgeti(L, 1, u-1);
-    set2(L, i, u-1);
+    lua_rawgeti(L, 1, a->u-1);
+    set2(L, s->i, a->u-1);
     /* a[l] <= P == a[u-1] <= a[u], only need to sort from l+1 to u-2 */
-    i = l; j = u-1;
+    s->i = a->l; s->j = a->u-1;
     for (;;) {  /* invariant: a[l..i] <= P <= a[j..u] */
       /* repeat ++i until a[i] >= P */
-      while (lua_rawgeti(L, 1, ++i), sort_comp(L, -1, -2)) {
-        if (i>u) luaL_error(L, "invalid order function for sorting");
+resume4:
+      while ((!s->s ? lua_rawgeti(L, 1, ++s->i) : (void)0), sort_comp(L, -1, -2, s, 4)) {
+        if (s->i>a->u) luaL_error(L, "invalid order function for sorting");
         lua_pop(L, 1);  /* remove a[i] */
       }
       /* repeat --j until a[j] <= P */
-      while (lua_rawgeti(L, 1, --j), sort_comp(L, -3, -1)) {
-        if (j<l) luaL_error(L, "invalid order function for sorting");
+resume5:
+      while ((!s->s ? lua_rawgeti(L, 1, --s->j) : (void)0), sort_comp(L, -3, -1, s, 5)) {
+        if (s->j<a->l) luaL_error(L, "invalid order function for sorting");
         lua_pop(L, 1);  /* remove a[j] */
       }
-      if (j<i) {
+      if (s->j<s->i) {
         lua_pop(L, 3);  /* pop pivot, a[i], a[j] */
         break;
       }
-      set2(L, i, j);
+      set2(L, s->i, s->j);
     }
-    lua_rawgeti(L, 1, u-1);
-    lua_rawgeti(L, 1, i);
-    set2(L, u-1, i);  /* swap pivot (a[u-1]) with a[i] */
+    lua_rawgeti(L, 1, a->u-1);
+    lua_rawgeti(L, 1, s->i);
+    set2(L, a->u-1, s->i);  /* swap pivot (a[u-1]) with a[i] */
     /* a[l..i-1] <= a[i] == P <= a[i+1..u] */
     /* adjust so that smaller half is in [j..i] and larger one in [l..u] */
-    if (i-l < u-i) {
-      j=l; i=i-1; l=i+2;
+    if (s->i-a->l < a->u-s->i) {
+      s->j=a->l; s->i=s->i-1; a->l=s->i+2;
     }
     else {
-      j=i+1; i=u; u=j-2;
+      s->j=s->i+1; s->i=a->u; a->u=s->j-2;
     }
-    auxsort(L, j, i);  /* call recursively the smaller one */
+    a->next = (struct table_sort_args*)alloc(ud, NULL, 0, sizeof(struct table_sort_args));
+    a->next->l = s->j, a->next->u = s->i;
+    a->next->next = NULL;
+    auxsort(L, s, a->next, m + 1);  /* call recursively the smaller one */
+    alloc(ud, a->next, sizeof(struct table_sort_args), 0);
+    a->next = NULL;
   }  /* repeat the routine for the larger one */
+  s->d--;
 }
 
 static int sort (lua_State *L) {
-  int n = aux_getn(L, 1);
+  struct table_sort_state * s;
+  int n;
+  void * ud = NULL;
+  lua_Alloc alloc = lua_getallocf(L, &ud);
+  if (lua_vcontext(L)) {
+    s = (struct table_sort_state*)lua_vcontext(L);
+    goto resume;
+  }
+  n = aux_getn(L, 1);
   luaL_checkstack(L, 40, "");  /* assume array is smaller than 2^40 */
   if (!lua_isnoneornil(L, 2))  /* is there a 2nd argument? */
     luaL_checktype(L, 2, LUA_TFUNCTION);
   lua_settop(L, 2);  /* make sure there is two arguments */
-  auxsort(L, 1, n);
+  s = (struct table_sort_state*)alloc(ud, NULL, 0, sizeof(struct table_sort_state));
+  s->args = (struct table_sort_args*)alloc(ud, NULL, 0, sizeof(struct table_sort_args));
+  s->args->l = 1;
+  s->args->u = n;
+  s->args->next = NULL;
+  s->s = s->d = s->i = s->j = 0;
+resume:
+  auxsort(L, s, s->args, 1);
+  alloc(ud, s, sizeof(struct table_sort_state), 0);
   return 0;
 }
 
