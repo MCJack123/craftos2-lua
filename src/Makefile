@@ -24,7 +24,7 @@ MYLIBS=
 
 PLATS= aix ansi bsd freebsd generic linux macosx mingw posix solaris emscripten
 
-LUA_A=	liblua.a
+LUA_A?=	liblua.a
 CORE_O=	lapi.o lcode.o ldebug.o ldo.o ldump.o lfunc.o lgc.o llex.o lmem.o \
 	lobject.o lopcodes.o lparser.o lstate.o lstring.o ltable.o ltm.o  \
 	lundump.o lvm.o lzio.o llock.o
@@ -101,7 +101,10 @@ linux:
 	$(MAKE) all MYCFLAGS="-DLUA_USE_LINUX -fPIC" MYLIBS="-Wl,-E -ldl -lreadline -lhistory -lncurses"
 
 macosx:
-	$(MAKE) all MYCFLAGS=-DLUA_USE_LINUX MYLIBS="-lreadline"
+	$(MAKE) all MYCFLAGS="-DLUA_USE_LINUX -mmacosx-version-min=10.13" MYLIBS="-lreadline"
+
+macosx-arm:
+	$(MAKE) all MYCFLAGS="-DLUA_USE_LINUX -mmacosx-version-min=11.0 -target arm64-apple-macos11" MYLIBS="-lreadline" LUA_A="liblua-arm64.a"
 # use this on Mac OS X 10.3-
 #	$(MAKE) all MYCFLAGS=-DLUA_USE_MACOSX
 
