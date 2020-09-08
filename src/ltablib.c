@@ -327,6 +327,7 @@ static int sort (lua_State *L) {
   s->s = s->d = s->i = s->j = 0;
 resume:
   auxsort(L, s, s->args, 1);
+  for (struct table_sort_args* a = s->args, *aa = a; a != NULL; aa = a, a = a->next, alloc(ud, aa, sizeof(struct table_sort_args), 0)) ;
   alloc(ud, s, sizeof(struct table_sort_state), 0);
   return 0;
 }
