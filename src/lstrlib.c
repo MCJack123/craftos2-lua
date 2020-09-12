@@ -731,7 +731,7 @@ LUALIB_API const char *luaL_checklstring_nil(lua_State *L, int narg, size_t *len
     if (len != NULL) *len = 3;
     return "nil";
   }
-  const char *s = lua_tolstring(L, narg, len);
+  const char *s = luaL_tolstring(L, narg, len);
   if (!s) luaL_typerror(L, narg, lua_typename(L, LUA_TSTRING));
   return s;
 }

@@ -58,6 +58,8 @@ LUALIB_API lua_Integer (luaL_checkinteger) (lua_State *L, int numArg);
 LUALIB_API lua_Integer (luaL_optinteger) (lua_State *L, int nArg,
                                           lua_Integer def);
 
+LUALIB_API const char *(luaL_tolstring) (lua_State *L, int idx, size_t *len);
+
 LUALIB_API void (luaL_checkstack) (lua_State *L, int sz, const char *msg);
 LUALIB_API void (luaL_checktype) (lua_State *L, int narg, int t);
 LUALIB_API void (luaL_checkany) (lua_State *L, int narg);
@@ -105,6 +107,8 @@ LUALIB_API const char *(luaL_findtable) (lua_State *L, int idx,
 #define luaL_optint(L,n,d)	((int)luaL_optinteger(L, (n), (d)))
 #define luaL_checklong(L,n)	((long)luaL_checkinteger(L, (n)))
 #define luaL_optlong(L,n,d)	((long)luaL_optinteger(L, (n), (d)))
+
+#define luaL_tostring(L,n) (luaL_tolstring(L, (n), NULL))
 
 #define luaL_typename(L,i)	lua_typename(L, lua_type(L,(i)))
 

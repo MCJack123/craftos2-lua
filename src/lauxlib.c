@@ -96,6 +96,34 @@ LUALIB_API int luaL_error (lua_State *L, const char *fmt, ...) {
 /* }====================================================== */
 
 
+LUALIB_API const char * luaL_tolstring(lua_State *L, int idx, size_t *len) {
+    luaL_checkany(L, idx);
+    if (luaL_callmeta(L, idx, "__tostring")) {
+        if (!lua_isstring(L, -1))
+            luaL_error(L, "'__tostring' must return a string");
+    } else {
+        switch (lua_type(L, idx)) {
+        case LUA_TNUMBER:
+            lua_pushstring(L, lua_tostring(L, idx));
+            break;
+        case LUA_TSTRING:
+            lua_pushvalue(L, 1);
+            break;
+        case LUA_TBOOLEAN:
+            lua_pushstring(L, (lua_toboolean(L, idx) ? "true" : "false"));
+            break;
+        case LUA_TNIL:
+            lua_pushliteral(L, "nil");
+            break;
+        default:
+            lua_pushfstring(L, "%s: %p", luaL_typename(L, idx), lua_topointer(L, idx));
+            break;
+        }
+    }
+    return lua_tolstring(L, -1, len);
+}
+
+
 LUALIB_API int luaL_checkoption (lua_State *L, int narg, const char *def,
                                  const char *const lst[]) {
   const char *name = (def) ? luaL_optstring(L, narg, def) :

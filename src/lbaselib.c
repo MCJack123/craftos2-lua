@@ -241,7 +241,14 @@ static int luaB_next (lua_State *L) {
 
 
 static int luaB_pairs (lua_State *L) {
+  if (lua_icontext(L)) return 3;
   luaL_checktype(L, 1, LUA_TTABLE);
+  if (luaL_getmetafield(L, 1, "__pairs")) {
+    luaL_checktype(L, -1, LUA_TFUNCTION);
+    lua_pushvalue(L, 1);
+    lua_icall(L, 1, 3, 1);
+    return 3;
+  }
   lua_pushvalue(L, lua_upvalueindex(1));  /* return generator, */
   lua_pushvalue(L, 1);  /* state, */
   lua_pushnil(L);  /* and initial value */
@@ -416,30 +423,7 @@ static int luaB_xpcall (lua_State *L) {  /* for compatibility only */
 
 
 static int luaB_tostring (lua_State *L) {
-  if (lua_icontext(L)) return 1;
-  luaL_checkany(L, 1);
-  if (luaL_getmetafield(L, 1, "__tostring")) {
-    lua_pushvalue(L, 1);
-    lua_icall(L, 1, 1, 1);  /* call metamethod */
-    return 1;
-  }
-  switch (lua_type(L, 1)) {
-    case LUA_TNUMBER:
-      lua_pushstring(L, lua_tostring(L, 1));
-      break;
-    case LUA_TSTRING:
-      lua_pushvalue(L, 1);
-      break;
-    case LUA_TBOOLEAN:
-      lua_pushstring(L, (lua_toboolean(L, 1) ? "true" : "false"));
-      break;
-    case LUA_TNIL:
-      lua_pushliteral(L, "nil");
-      break;
-    default:
-      lua_pushfstring(L, "%s: %p", luaL_typename(L, 1), lua_topointer(L, 1));
-      break;
-  }
+  luaL_tostring(L, 1);
   return 1;
 }
 
