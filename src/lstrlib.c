@@ -727,10 +727,6 @@ resume:
 #define MAX_FORMAT	(sizeof(FLAGS) + sizeof(LUA_INTFRMLEN) + 10)
 
 LUALIB_API const char *luaL_checklstring_nil(lua_State *L, int narg, size_t *len) {
-  if (lua_isnil(L, narg)) {
-    if (len != NULL) *len = 3;
-    return "nil";
-  }
   const char *s = luaL_tolstring(L, narg, len);
   if (!s) luaL_typerror(L, narg, lua_typename(L, LUA_TSTRING));
   return s;
@@ -850,12 +846,12 @@ static int str_format (lua_State *L) {
           if (!strchr(form, '.') && l >= 100) {
             /* no precision and string is too long to be formatted;
                keep original string */
-            lua_pushvalue(L, arg);
             luaL_addvalue(&b);
             continue;  /* skip the `addsize' at the end */
           }
           else {
             sprintf(buff, form, s);
+            lua_pop(L, 1);
             break;
           }
         }
