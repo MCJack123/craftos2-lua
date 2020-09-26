@@ -407,7 +407,7 @@ static const char *match (MatchState *ms, const char *s, const char *p, const ch
         }
         default: {
           if (isdigit(uchar(*(p+1)))) {  /* capture results (%0-%9)? */
-            s = match_capture(ms, s, uchar(*(p+1)), pend);
+            s = match_capture(ms, s, uchar(*(p+1)));
             if (s == NULL) return NULL;
             p+=2; goto init;  /* else return match(ms, s, p+2) */
           }
