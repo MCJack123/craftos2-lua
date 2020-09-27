@@ -375,7 +375,7 @@ static const char *match_capture (MatchState *ms, const char *s, int l) {
 
 static const char *match (MatchState *ms, const char *s, const char *p, const char *pend) {
   init: /* using goto's to optimize tail recursion */
-  if (p == pend) return s;
+  if (p >= pend) return s;
   switch (*p) {
     case '(': {  /* start capture */
       if (*(p+1) == ')')  /* position capture? */
@@ -520,7 +520,7 @@ static int str_find_aux (lua_State *L, int find) {
   }
   else {
     MatchState ms;
-    int anchor = (*p == '^') ? (p++, 1) : 0;
+    int anchor = (*p == '^') ? (p++, l2--, 1) : 0;
     const char *s1=s+init;
     ms.L = L;
     ms.src_init = s;
@@ -670,7 +670,7 @@ static int str_gsub (lua_State *L) {
   const char *src = luaL_checklstring(L, 1, &srcl);
   const char *p = luaL_checklstring(L, 2, &pl);
   int tr = lua_type(L, 3);
-  int anchor = (*p == '^') ? (p++, 1) : 0;
+  int anchor = (*p == '^') ? (p++, pl--, 1) : 0;
   void * ud = NULL;
   struct string_gsub_state * s;
   lua_Alloc alloc = lua_getallocf(L, &ud);
