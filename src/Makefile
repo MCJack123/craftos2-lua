@@ -101,7 +101,7 @@ linux:
 	$(MAKE) all MYCFLAGS="-DLUA_USE_LINUX -fPIC" MYLIBS="-Wl,-E -ldl -lreadline -lhistory -lncurses"
 
 macosx:
-	$(MAKE) all MYCFLAGS="-DLUA_USE_LINUX -mmacosx-version-min=10.13" MYLIBS="-lreadline"
+	$(MAKE) all MYCFLAGS="-DLUA_USE_LINUX -mmacosx-version-min=10.9" MYLIBS="-lreadline"
 
 macosx-arm:
 	$(MAKE) all MYCFLAGS="-DLUA_USE_LINUX -mmacosx-version-min=11.0 -target arm64-apple-macos11" MYLIBS="-lreadline" LUA_A="liblua-arm64.a"
