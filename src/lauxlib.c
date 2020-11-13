@@ -202,7 +202,7 @@ LUALIB_API const char *luaL_checklstring (lua_State *L, int narg, size_t *len) {
 
 LUALIB_API const char *luaL_checkstring_(lua_State *L, int narg) {
     const char *s = lua_tostring(L, narg);
-    if (!s) luaL_typerror(L, narg, lua_typename(L, LUA_TSTRING));
+    if (!s) luaL_typerror_(L, narg, lua_typename(L, LUA_TSTRING));
     return s;
 }
 
