@@ -42,19 +42,19 @@
 
 LUALIB_API int luaL_argerror (lua_State *L, int narg, const char *extramsg) {
   lua_Debug ar;
-  if (!lua_getstack(L, 0, &ar))  /* no stack frame? */
+  //if (!lua_getstack(L, 0, &ar))  /* no stack frame? */
     return luaL_error(L, "bad argument #%d (%s)", narg, extramsg);
-  lua_getinfo(L, "n", &ar);
+  /*lua_getinfo(L, "n", &ar);
   if (strcmp(ar.namewhat, "method") == 0) {
-    narg--;  /* do not count `self' */
-    if (narg == 0)  /* error is in the self argument itself? */
+    narg--;  /* do not count `self' *
+    if (narg == 0)  /* error is in the self argument itself? *
       return luaL_error(L, "calling " LUA_QS " on bad self (%s)",
                            ar.name, extramsg);
   }
   if (ar.name == NULL)
     ar.name = "?";
   return luaL_error(L, "bad argument #%d to " LUA_QS " (%s)",
-                        narg, ar.name, extramsg);
+                        narg, ar.name, extramsg);*/
 }
 
 
