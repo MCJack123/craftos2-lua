@@ -69,6 +69,12 @@ LUALIB_API int luaL_typerror (lua_State *L, int narg, const char *tname) {
   return luaL_argerror(L, narg, msg);
 }
 
+int luaL_typerror_(lua_State *L, int narg, const char *tname) {
+    const char *msg = lua_pushfstring(L, "expected %s, got %s",
+                                      tname, luaL_typename(L, narg));
+    return luaL_argerror_(L, narg, msg);
+}
+
 
 static void tag_error (lua_State *L, int narg, int tag) {
   luaL_typerror(L, narg, lua_typename(L, tag));
@@ -196,7 +202,7 @@ LUALIB_API const char *luaL_checklstring (lua_State *L, int narg, size_t *len) {
 
 LUALIB_API const char *luaL_checkstring_(lua_State *L, int narg) {
     const char *s = lua_tostring(L, narg);
-    if (!s) tag_error(L, narg, LUA_TSTRING);
+    if (!s) luaL_typerror(L, narg, lua_typename(L, LUA_TSTRING));
     return s;
 }
 
