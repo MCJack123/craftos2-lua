@@ -50,7 +50,7 @@ static int pushresult (lua_State *L, int i, const char *filename) {
 
 static void fileerror (lua_State *L, int arg, const char *filename) {
   lua_pushfstring(L, "%s: %s", filename, strerror(errno));
-  luaL_argerror(L, arg, lua_tostring(L, -1));
+  luaL_argerror_(L, arg, lua_tostring(L, -1));
 }
 
 
@@ -388,7 +388,7 @@ static int g_read (lua_State *L, FILE *f, int first) {
             success = 1; /* always success */
             break;
           default:
-            return luaL_argerror(L, n, "invalid format");
+            return luaL_argerror_(L, n, "invalid format");
         }
       }
     }
