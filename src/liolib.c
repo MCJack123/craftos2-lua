@@ -168,7 +168,7 @@ static int io_tostring (lua_State *L) {
 static int io_open (lua_State *L) {
   if (!lua_isstring(L, 1)) luaL_error(L, "bad argument #1 (expected string, got %s)", lua_typename(L, lua_type(L, 1)));
   if (!lua_isstring(L, 2) && !lua_isnoneornil(L, 2)) luaL_error(L, "bad argument #2 (expected string, got %s)", lua_typename(L, lua_type(L, 2)));
-  const char *filename = luaL_checkstring(L, 1);
+  const char *filename = luaL_checkstring_(L, 1);
   const char *mode = luaL_optstring(L, 2, "r");
   FILE **pf = newfile(L);
   *pf = fopen(filename, mode);
@@ -260,7 +260,7 @@ static int io_lines (lua_State *L) {
   }
   else {
     int i;
-    const char *filename = luaL_checkstring(L, 1);
+    const char *filename = luaL_checkstring_(L, 1);
     FILE **pf = newfile(L);
     *pf = fopen(filename, "r");
     if (*pf == NULL)
@@ -610,7 +610,7 @@ static int stdfile_seek(lua_State *L) {
   if (lua_istable(L, 1)) lua_remove(L, 1);
   read_count = (int*)lua_touserdata(L, lua_upvalueindex(1));
   if (!lua_isnoneornil(L, 1)) {
-    whence = luaL_checkstring(L, 1);
+    whence = luaL_checkstring_(L, 1);
     if (strcmp(whence, "cur") && strcmp(whence, "set") && strcmp(whence, "end")) 
       luaL_error(L, "bad argument #1 to 'seek' (invalid option '%s')", whence);
     if (!lua_isnoneornil(L, 2)) {
