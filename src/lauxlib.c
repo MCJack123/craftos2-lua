@@ -304,6 +304,7 @@ LUALIB_API void luaI_openlib (lua_State *L, const char *libname,
   }
   for (; l->name; l++) {
     int i;
+    if (l->func == NULL) continue;
     for (i=0; i<nup; i++)  /* copy upvalues to the top */
       lua_pushvalue(L, -nup);
     lua_pushcclosure(L, l->func, nup);

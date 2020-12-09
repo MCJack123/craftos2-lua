@@ -8,6 +8,8 @@
 #ifndef lualib_h
 #define lualib_h
 
+#include <stdio.h>
+
 #include "lua.h"
 
 
@@ -49,7 +51,8 @@ LUALIB_API int (luaopen_bit32)(lua_State *L);
 /* open all previous libraries */
 LUALIB_API void (luaL_openlibs) (lua_State *L); 
 
-
+LUALIB_API void lualib_debug_ccpc_functions(void(*scm)(lua_State *L, int), lua_CFunction debug, lua_CFunction breakpoint, lua_CFunction unsetbreakpoint);
+LUALIB_API void lualib_io_ccpc_functions(FILE* (*open)(lua_State *L, const char * filename, const char * mode), int (*close)(lua_State *L, FILE * stream));
 
 #ifndef lua_assert
 #define lua_assert(x)	((void)0)

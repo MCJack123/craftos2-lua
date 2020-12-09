@@ -210,13 +210,13 @@ LUA_API int (lua_dump) (lua_State *L, lua_Writer writer, void *data);
 LUA_API void *lua_vcontext (lua_State *L);
 
 #define lua_icontext(L)		((int)(ptrdiff_t)lua_vcontext(L))
-#define lua_call(L, na, nr)	lua_vcall(L, (na), (nr), NULL)
 #define lua_icall(L, na, nr, i) \
 	lua_vcall(L, (na), (nr), (void *)(ptrdiff_t)(i))
-#define lua_pcall(L, na, nr, ef)	lua_vpcall(L, (na), (nr), (ef), NULL)
 #define lua_ipcall(L, na, nr, ef, i) \
 	lua_vpcall(L, (na), (nr), (ef), (void *)(ptrdiff_t)(i))
 
+LUA_API void lua_call(lua_State *L, int na, int nr);
+LUA_API int lua_pcall(lua_State *L, int na, int nr, int ef);
 
 /*
 ** coroutine functions

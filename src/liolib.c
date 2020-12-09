@@ -18,10 +18,15 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
-extern FILE* mounter_fopen(lua_State *L, const char * filename, const char * mode);
+FILE* default_fopen(lua_State *L, const char * filename, const char * mode) {return fopen(filename, mode);}
+int default_fclose(lua_State *L, FILE * stream) {return fclose(stream);}
+
+FILE* (*mounter_fopen)(lua_State *L, const char * filename, const char * mode) = &default_fopen;
+int (*mounter_fclose)(lua_State *L, FILE * stream) = &default_fclose;
+
 #define fopen(f, m) mounter_fopen(L, f, m)
-extern int mounter_fclose(lua_State *L, FILE * stream);
 #define fclose(f) mounter_fclose(L, f)
+
 
 #define IO_INPUT	1
 #define IO_OUTPUT	2
@@ -765,5 +770,10 @@ LUALIB_API int luaopen_io (lua_State *L) {
   lua_setfield(L, -2, "write");
   lua_setfield(L, -2, "stderr");
   return 1;
+}
+
+LUALIB_API void lualib_io_ccpc_functions(FILE* (*open)(lua_State *L, const char * filename, const char * mode), int (*close)(lua_State *L, FILE * stream)) {
+  mounter_fopen = open;
+  mounter_fclose = close;
 }
 

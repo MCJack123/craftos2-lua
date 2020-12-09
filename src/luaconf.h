@@ -18,6 +18,9 @@
 ** ===================================================================
 */
 
+#ifdef _WINDLL
+#define LUA_BUILD_AS_DLL
+#endif
 
 /*
 @@ LUA_ANSI controls the use of non-ansi features.

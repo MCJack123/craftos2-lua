@@ -17,7 +17,7 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
-
+void (*setcompmask)(lua_State *L, int mask) = NULL;
 
 static int db_getregistry (lua_State *L) {
   lua_pushvalue(L, LUA_REGISTRYINDEX);
@@ -216,7 +216,7 @@ static int db_setupvalue (lua_State *L) {
 
 
 
-const char KEY_HOOK = 'h';
+LUALIB_API const char KEY_HOOK = 'h';
 
 
 static void hookf (lua_State *L, lua_Debug *ar) {
@@ -269,7 +269,6 @@ static void gethooktable (lua_State *L) {
   }
 }
 
-extern void setcompmask(lua_State *L, int mask);
 static int db_sethook (lua_State *L) {
   int arg, mask, count;
   lua_Hook func;
@@ -284,7 +283,7 @@ static int db_sethook (lua_State *L) {
     count = luaL_optint(L, arg+3, 0);
     func = hookf; mask = makemask(smask, count);
   }
-  setcompmask(L, mask);
+  if (setcompmask != NULL) setcompmask(L, mask);
   gethooktable(L);
   lua_pushlightuserdata(L, L1);
   lua_newtable(L);
@@ -316,9 +315,6 @@ static int db_gethook (lua_State *L) {
   } else return 1;
   return 3;
 }
-
-
-extern int db_debug (lua_State *L);
 
 
 #define LEVELS1	12	/* size of the first part of the stack */
@@ -380,10 +376,23 @@ static int db_errorfb (lua_State *L) {
   return 1;
 }
 
-extern int db_breakpoint(lua_State *L);
-extern int db_unsetbreakpoint(lua_State *L);
+static int db_debug (lua_State *L) {
+  for (;;) {
+    char buffer[250];
+    fputs("lua_debug> ", stderr);
+    if (fgets(buffer, sizeof(buffer), stdin) == 0 ||
+        strcmp(buffer, "cont\n") == 0)
+      return 0;
+    if (luaL_loadbuffer(L, buffer, strlen(buffer), "=(debug command)") ||
+        lua_pcall(L, 0, 0, 0)) {
+      fputs(lua_tostring(L, -1), stderr);
+      fputs("\n", stderr);
+    }
+    lua_settop(L, 0);  /* remove eventual returns */
+  }
+}
 
-static const luaL_Reg dblib[] = {
+static luaL_Reg dblib[] = {
   {"debug", db_debug},
   {"getfenv", db_getfenv},
   {"gethook", db_gethook},
@@ -392,14 +401,14 @@ static const luaL_Reg dblib[] = {
   {"getregistry", db_getregistry},
   {"getmetatable", db_getmetatable},
   {"getupvalue", db_getupvalue},
-  {"setbreakpoint", db_breakpoint},
+  {"setbreakpoint", NULL},
   {"setfenv", db_setfenv},
   {"sethook", db_sethook},
   {"setlocal", db_setlocal},
   {"setmetatable", db_setmetatable},
   {"setupvalue", db_setupvalue},
   {"traceback", db_errorfb},
-  {"unsetbreakpoint", db_unsetbreakpoint},
+  {"unsetbreakpoint", NULL},
   {NULL, NULL}
 };
 
@@ -407,5 +416,12 @@ static const luaL_Reg dblib[] = {
 LUALIB_API int luaopen_debug (lua_State *L) {
   luaL_register(L, LUA_DBLIBNAME, dblib);
   return 1;
+}
+
+LUALIB_API void lualib_debug_ccpc_functions(void(*scm)(lua_State *L, int), lua_CFunction debug, lua_CFunction breakpoint, lua_CFunction unsetbreakpoint) {
+  setcompmask = scm;
+  dblib[0].func = debug;
+  dblib[8].func = breakpoint;
+  dblib[15].func = unsetbreakpoint;
 }
 

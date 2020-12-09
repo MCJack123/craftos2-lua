@@ -92,6 +92,10 @@ void luaA_pushobject (lua_State *L, const TValue *o) {
 }
 
 
+LUA_API void lua_call(lua_State *L, int na, int nr) {lua_vcall(L, na, nr, NULL);}
+LUA_API int lua_pcall(lua_State *L, int na, int nr, int ef) {return lua_vpcall(L, na, nr, ef, NULL);}
+
+
 LUA_API int lua_checkstack (lua_State *L, int size) {
   int res = 1;
   lua_lock(L);
