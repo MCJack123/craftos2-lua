@@ -144,7 +144,7 @@ int luaD_rawrunprotected (lua_State *L, Pfunc f, void *ud) {
 
 static int f_continue (lua_State *L, void *ud) {
   ptrdiff_t stop_ci = (ptrdiff_t)ud;
-  while (L->ci > restoreci(L, stop_ci)) {  /* continue frames, top to bottom */
+  while (L->ci > restoreci(L, stop_ci) && !G(L)->haltstate) {  /* continue frames, top to bottom */
     CClosure *cc = &ci_func(L->ci)->c;
     L->ci->errfunc = 0;
     if (cc->isC) {  /* continue C function */

@@ -95,6 +95,7 @@ typedef struct global_State {
   TString *tmname[TM_N];  /* array with tag-method names */
   void *lock;  /* pointer to lock */
   int lockstate;  /* 0 = unlocked, 1 = locked */
+  int haltstate;  /* set to indicate state execution should be halted */
 } global_State;
 
 

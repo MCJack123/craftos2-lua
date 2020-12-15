@@ -394,6 +394,7 @@ int luaV_execute (lua_State *L) {
   for (;;) {
     const Instruction i = *pc++;
     StkId ra;
+    if (G(L)->haltstate) return 0;  /* exit if the state was halted */
     if ((L->hookmask & (LUA_MASKLINE | LUA_MASKCOUNT)) &&
            (--L->hookcount == 0 || L->hookmask & LUA_MASKLINE))
  SAVEPC(L, pc);     base = traceexec(L, pc);

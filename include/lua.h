@@ -258,6 +258,10 @@ LUA_API void  (lua_concat) (lua_State *L, int n);
 LUA_API lua_Alloc (lua_getallocf) (lua_State *L, void **ud);
 LUA_API void lua_setallocf (lua_State *L, lua_Alloc f, void *ud);
 
+LUA_API void  (lua_halt) (lua_State *L); /* forcefully halts the Lua state specified from a separate thread
+											warning: this will leave the state in an invalid state;
+											do not use the state after calling this - close it immediately */
+
 
 
 /* 

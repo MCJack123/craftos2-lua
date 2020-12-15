@@ -1112,3 +1112,9 @@ LUA_API const char *lua_setupvalue (lua_State *L, int funcindex, int n) {
   return name;
 }
 
+LUA_API void lua_halt(lua_State *L) {
+  lua_lock(L);
+  G(L)->haltstate = 1;
+  lua_unlock(L);
+}
+
