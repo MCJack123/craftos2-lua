@@ -780,7 +780,7 @@ LUA_API int lua_setfenv (lua_State *L, int idx) {
 
 
 #define checkresults(L,na,nr) \
-     api_check(L, (nr) == LUA_MULTRET || (L->ci->tozp - L->top >= (nr) - (na)))
+     api_check(L, (nr) == LUA_MULTRET || (L->ci->top - L->top >= (nr) - (na)))
 	
 LUA_API void *lua_vcontext (lua_State *L) {
   return L->ctx;

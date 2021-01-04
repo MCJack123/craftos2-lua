@@ -532,10 +532,20 @@ static int resume_error (lua_State *L, const char *msg) {
  LUA_API int lua_resume (lua_State *L, int nargs) {
   Pfunc pf;
   void *ud;
-   int status, old_nCcalls;
-   lua_lock(L);
-   if (L->nCcalls >= LUAI_MAXCCALLS*8)
+  int status, old_nCcalls;
+  lua_lock(L);
+  if (L->nCcalls >= LUAI_MAXCCALLS*8)
     return resume_error(L, "C stack overflow");
+  if (L->status == 0 && L->ci != L->base_ci)
+    return resume_error(L, "cannot resume non-suspended coroutine");
+  if (L->status != LUA_YIELD && L->status != 0)
+    return resume_error(L, "cannot resume dead coroutine");
+  if (L->hookmask & LUA_MASKRESUME) {
+    status = L->status;
+    L->status = 0;
+    luaD_callhook(L, LUA_HOOKRESUME, -1);
+    L->status = status;
+  }
   switch (L->status) {
   case LUA_YIELD:
     pf = f_coresume;
@@ -543,17 +553,11 @@ static int resume_error (lua_State *L, const char *msg) {
     L->status = 0;
     break;
   case 0:
-    if (L->ci != L->base_ci)
-       return resume_error(L, "cannot resume non-suspended coroutine");
     pf = f_costart;
     ud = L->top - (nargs + 1);
     break;
-  default:
-    return resume_error(L, "cannot resume dead coroutine");
   }
   lua_assert(cast(StkId, ud) >= L->base);
-  if (L->hookmask & LUA_MASKRESUME)
-    luaD_callhook(L, LUA_HOOKRESUME, -1);
   old_nCcalls = L->nCcalls;
   for (;;) {
     L->baseCcalls = (L->nCcalls = (old_nCcalls & ~7) + 8);

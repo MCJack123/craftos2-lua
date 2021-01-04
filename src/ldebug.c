@@ -132,7 +132,7 @@ LUA_API const char *lua_getlocal (lua_State *L, const lua_Debug *ar, int n) {
     if (!isLfunction(L->top - 1))  /* not a Lua function? */
       name = NULL;
     else  /* consider live variables at function start (parameters) */
-      name = luaF_getlocalname(check_exp(((L->top - 1)->tt == (LUA_TLCL | BIT_ISCOLLECTABLE)), &(L->top - 1)->value.gc->cl.l)->p, n, 0);
+      name = luaF_getlocalname(check_exp(/*((L->top - 1)->tt == (LUA_TLCL | BIT_ISCOLLECTABLE))*/ 1, &(L->top - 1)->value.gc->cl.l)->p, n, 0);
   } else {
     ci = L->base_ci + ar->i_ci;
     name = findlocal(L, ci, n);
