@@ -365,6 +365,11 @@ LUALIB_API void luaL_setn (lua_State *L, int t, int n) {
 
 
 LUALIB_API int luaL_getn (lua_State *L, int t) {
+  return luaL_igetn(L, t, 0);
+}
+
+LUALIB_API int luaL_igetn (lua_State *L, int t, int ictx) {
+  if (ictx && lua_icontext(L) == ictx) goto resume;
   int n;
   t = abs_index(L, t);
   lua_pushliteral(L, "n");  /* try t.n */
@@ -378,7 +383,8 @@ LUALIB_API int luaL_getn (lua_State *L, int t) {
     lua_getfield(L, -1, "__len");
     if (lua_isfunction(L, -1)) {
       lua_pushvalue(L, t);
-      lua_call(L, 1, 1);
+      lua_icall(L, 1, 1, ictx);
+  resume:
       if (lua_isnumber(L, -1)) {
         n = lua_tointeger(L, -1);
         lua_pop(L, 2);

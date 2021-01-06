@@ -17,6 +17,7 @@
 
 
 #define aux_getn(L,n)	(luaL_checktype(L, n, LUA_TTABLE), luaL_getn(L, n))
+#define aux_igetn(L,n,c)	(luaL_checktype(L, n, LUA_TTABLE), luaL_igetn(L, n, c))
 
 
 static int foreachi (lua_State *L) {
