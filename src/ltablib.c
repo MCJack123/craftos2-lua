@@ -17,19 +17,20 @@
 
 
 #define aux_getn(L,n)	(luaL_checktype(L, n, LUA_TTABLE), luaL_getn(L, n))
+#define aux_igetn(L,n,c)	(luaL_checktype(L, n, LUA_TTABLE), luaL_igetn(L, n, c))
 
 
 static int foreachi (lua_State *L) {
   int n;
   int i = lua_icontext(L);
-  if (i) {
+  if (i > 0) {
     n = lua_tointeger(L, 3);  /* get cached n */
     goto resume;
   }
-  n = aux_getn(L, 1);
+  n = aux_igetn(L, 1, -1);
    luaL_checktype(L, 2, LUA_TFUNCTION);
   lua_settop(L, 2);
-  lua_pushinteger(L, n);  /* cache n because aux_getn may be expensive */
+  lua_pushinteger(L, n);  /* cache n because aux_igetn may be expensive */
    for (i=1; i <= n; i++) {
      lua_pushvalue(L, 2);  /* function */
      lua_pushinteger(L, i);  /* 1st argument */
@@ -79,7 +80,7 @@ static int maxn (lua_State *L) {
 
 
 static int getn (lua_State *L) {
-  lua_pushinteger(L, aux_getn(L, 1));
+  lua_pushinteger(L, aux_igetn(L, 1, 1));
   return 1;
 }
 
@@ -97,7 +98,7 @@ static int setn (lua_State *L) {
 
 
 static int tinsert (lua_State *L) {
-  int e = aux_getn(L, 1) + 1;  /* first empty element */
+  int e = aux_igetn(L, 1, 1) + 1;  /* first empty element */
   int pos;  /* where to insert new element */
   switch (lua_gettop(L)) {
     case 2: {  /* called with only 2 arguments */
@@ -125,7 +126,7 @@ static int tinsert (lua_State *L) {
 
 
 static int tremove (lua_State *L) {
-  int e = aux_getn(L, 1);
+  int e = aux_igetn(L, 1, 1);
   int pos = luaL_optint(L, 2, e);
   if (!(1 <= pos && pos <= e))  /* position is outside bounds? */
    return 0;  /* nothing to remove */
@@ -157,7 +158,8 @@ static int tconcat (lua_State *L) {
   const char *sep = luaL_optlstring(L, 2, "", &lsep);
   luaL_checktype(L, 1, LUA_TTABLE);
   i = luaL_optint(L, 3, 1);
-  last = luaL_opt(L, luaL_checkint, 4, luaL_getn(L, 1));
+  if (!lua_icontext(L)) lua_settop(L, 4);
+  last = luaL_opt(L, luaL_checkint, 4, luaL_igetn(L, 1, 1));
   luaL_buffinit(L, &b);
   for (; i < last; i++) {
     addfield(L, &b, i);
@@ -310,11 +312,11 @@ static int sort (lua_State *L) {
   int n;
   void * ud = NULL;
   lua_Alloc alloc = lua_getallocf(L, &ud);
-  if (lua_vcontext(L)) {
+  if (lua_icontext(L) > 0) {
     s = (struct table_sort_state*)lua_vcontext(L);
     goto resume;
   }
-  n = aux_getn(L, 1);
+  n = aux_igetn(L, 1, -1);
   luaL_checkstack(L, 40, "");  /* assume array is smaller than 2^40 */
   if (!lua_isnoneornil(L, 2))  /* is there a 2nd argument? */
     luaL_checktype(L, 2, LUA_TFUNCTION);
@@ -350,7 +352,8 @@ static int tunpack (lua_State *L) {
   int i, e, n;
   luaL_checktype(L, 1, LUA_TTABLE);
   i = luaL_optint(L, 2, 1);
-  e = luaL_opt(L, luaL_checkint, 3, luaL_getn(L, 1));
+  if (lua_icontext(L) == 0) lua_settop(L, 3);
+  e = luaL_opt(L, luaL_checkint, 3, luaL_igetn(L, 1, 1));
   if (i > e) return 0;  /* empty range */
   n = e - i + 1;  /* number of elements */
   if (n <= 0 || !lua_checkstack(L, n))  /* n <= 0 means arith. overflow */
