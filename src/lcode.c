@@ -624,6 +624,13 @@ void luaK_indexed (FuncState *fs, expdesc *t, expdesc *k) {
 }
 
 
+static lua_Number luai_nummod(lua_Number a, lua_Number b) {
+  lua_Number q = fmod(a, b);
+  if ((a < 0) != (b < 0)) return q + b;
+  return q;
+}
+
+
 static int constfolding (OpCode op, expdesc *e1, expdesc *e2) {
   lua_Number v1, v2, r;
   if (!isnumeral(e1) || !isnumeral(e2)) return 0;

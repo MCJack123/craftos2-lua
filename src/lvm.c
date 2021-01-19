@@ -317,6 +317,11 @@ void luaV_concat (lua_State *L, int total, int last) {
   } while (total > 1);  /* repeat until only 1 result left */
 }
 
+static lua_Number luai_nummod(lua_Number a, lua_Number b) {
+  lua_Number q = fmod(a, b);
+  if ((a < 0) != (b < 0)) return q + b;
+  return q;
+}
 
 static void Arith (lua_State *L, StkId ra, const TValue *rb,
                    const TValue *rc, TMS op) {
@@ -375,8 +380,6 @@ static void Arith (lua_State *L, StkId ra, const TValue *rb,
         else \
           Protect(Arith(L, ra, rb, rc, tm)); \
       }
-
-
 
 int luaV_execute (lua_State *L) {
   LClosure *cl;
