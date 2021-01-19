@@ -537,7 +537,7 @@
 #define luai_numsub(a,b)	((a)-(b))
 #define luai_nummul(a,b)	((a)*(b))
 #define luai_numdiv(a,b)	((a)/(b))
-#define luai_nummod(a,b)	(fmod(a,b))
+#define luai_nummod(a,b)	(fmod(a,b) < 0 ? fmod(a,b)+(b) : fmod(a,b))
 #define luai_numpow(a,b)	(pow(a,b))
 #define luai_numunm(a)		(-(a))
 #define luai_numeq(a,b)		((a)==(b))
