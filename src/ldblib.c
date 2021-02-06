@@ -17,6 +17,8 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
+#include "lstate.h"
+
 void (*setcompmask)(lua_State *L, int mask) = NULL;
 
 static int db_getregistry (lua_State *L) {
@@ -221,7 +223,8 @@ LUALIB_API const char KEY_HOOK = 'h';
 
 static void hookf (lua_State *L, lua_Debug *ar) {
   static const char *const hooknames[] =
-    {"call", "return", "line", "count", "tail return"};
+    {"call", "return", "line", "count", "tail return", "error"};
+  //if (lua_icontext(L)) return;
   lua_pushlightuserdata(L, (void *)&KEY_HOOK);
   lua_rawget(L, LUA_REGISTRYINDEX);
   lua_pushlightuserdata(L, L);
@@ -232,7 +235,7 @@ static void hookf (lua_State *L, lua_Debug *ar) {
       lua_pushinteger(L, ar->currentline);
     else lua_pushnil(L);
     lua_assert(lua_getinfo(L, "lS", ar));
-    lua_call(L, 2, 0);
+    lua_icall(L, 2, 0, (const Instruction*)L->ctx - 1);
   }
 }
 
@@ -242,6 +245,7 @@ static int makemask (const char *smask, int count) {
   if (strchr(smask, 'c')) mask |= LUA_MASKCALL;
   if (strchr(smask, 'r')) mask |= LUA_MASKRET;
   if (strchr(smask, 'l')) mask |= LUA_MASKLINE;
+  if (strchr(smask, 'e')) mask |= LUA_MASKERROR;
   if (count > 0) mask |= LUA_MASKCOUNT;
   return mask;
 }
@@ -252,6 +256,7 @@ static char *unmakemask (int mask, char *smask) {
   if (mask & LUA_MASKCALL) smask[i++] = 'c';
   if (mask & LUA_MASKRET) smask[i++] = 'r';
   if (mask & LUA_MASKLINE) smask[i++] = 'l';
+  if (mask & LUA_MASKERROR) smask[i++] = 'e';
   smask[i] = '\0';
   return smask;
 }
@@ -273,6 +278,7 @@ static int db_sethook (lua_State *L) {
   int arg, mask, count;
   lua_Hook func;
   lua_State *L1 = getthread(L, &arg);
+  if (lua_gethook(L1) != NULL && lua_gethook(L1) != hookf) luaL_error(L, "Cannot set hooks while debugger is attached");
   if (lua_isnoneornil(L, arg+1)) {
     lua_settop(L, arg+1);
     func = NULL; mask = 0; count = 0;  /* turn off hooks */
@@ -283,17 +289,12 @@ static int db_sethook (lua_State *L) {
     count = luaL_optint(L, arg+3, 0);
     func = hookf; mask = makemask(smask, count);
   }
-  if (setcompmask != NULL) setcompmask(L, mask);
   gethooktable(L);
   lua_pushlightuserdata(L, L1);
-  lua_newtable(L);
   lua_pushvalue(L, arg+1);
-  lua_setfield(L, -2, "func");
-  lua_pushinteger(L, mask);
-  lua_setfield(L, -2, "mask");
   lua_rawset(L, -3);  /* set new hook */
   lua_pop(L, 1);  /* remove hook table */
-  //lua_sethook(L1, func, mask, count);  /* set hooks */
+  lua_sethook(L1, func, mask, count);  /* set hooks */
   return 0;
 }
 
@@ -302,17 +303,18 @@ static int db_gethook (lua_State *L) {
   int arg;
   lua_State *L1 = getthread(L, &arg);
   char buff[5];
-  gethooktable(L);
-  lua_pushlightuserdata(L, L1);
-  lua_rawget(L, -2);   /* get hook */
-  lua_remove(L, -2);  /* remove hook table */
-  if (!lua_isnil(L, -1)) {
-    lua_getfield(L, -1, "func");
-    lua_getfield(L, -2, "mask");
-    lua_pushstring(L, unmakemask(lua_tointeger(L, -1), buff));
-    lua_remove(L, -2);
-    lua_pushinteger(L, lua_gethookcount(L1));
-  } else return 1;
+  int mask = lua_gethookmask(L1);
+  lua_Hook hook = lua_gethook(L1);
+  if (hook != NULL && hook != hookf)  /* external hook? */
+    lua_pushliteral(L, "external hook");
+  else {
+    gethooktable(L);
+    lua_pushlightuserdata(L, L1);
+    lua_rawget(L, -2);   /* get hook */
+    lua_remove(L, -2);  /* remove hook table */
+  }
+  lua_pushstring(L, unmakemask(mask, buff));
+  lua_pushinteger(L, lua_gethookcount(L1));
   return 3;
 }
 

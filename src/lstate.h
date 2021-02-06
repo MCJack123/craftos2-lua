@@ -54,6 +54,10 @@ typedef struct CallInfo {
   int tailcalls;  /* number of tail calls lost under this entry */
   lu_byte hookmask;  /* restore on catch: hookmask */
   lu_byte errfunc;  /* 0: no catch, 1: catch, >=2: catch with errfunc */
+  lu_byte ishook;  /* set when calling a hook function */
+  ptrdiff_t hook_top;
+  ptrdiff_t hook_ci_top;
+  unsigned short hook_old_nCcalls;
 } CallInfo;
 
 
@@ -95,7 +99,8 @@ typedef struct global_State {
   TString *tmname[TM_N];  /* array with tag-method names */
   void *lock;  /* pointer to lock */
   int lockstate;  /* 0 = unlocked, 1 = locked */
-  int haltstate;  /* set to indicate state execution should be halted */
+  int haltstate;  /* set to indicate state execution should be halted (1 = halt all, 2 = throw error) */
+  const char * haltmessage;  /* if haltstate is 2, a message to show as the error message */
 } global_State;
 
 

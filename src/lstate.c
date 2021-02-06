@@ -58,6 +58,7 @@ static void stack_init (lua_State *L1, lua_State *L) {
   L1->base = L1->ci->base = L1->top;
   L1->ci->top = L1->top + LUA_MINSTACK;
   L1->ci->errfunc = 0;
+  L1->ci->ishook = 0;
 }
 
 
@@ -214,7 +215,7 @@ LUA_API void lua_close (lua_State *L) {
     L->ci = L->base_ci;
     L->ci->errfunc = 0;  /* no error function during GC metamethods */
     L->base = L->top = L->ci->base;
-    L->nCcalls = L->baseCcalls = 0;
+    L->nCcalls = L->baseCcalls = L->ci->ishook = 0;
   } while (luaD_rawrunprotected(L, callallgcTM, NULL) != 0);
   lua_assert(G(L)->tmudata == NULL);
   luai_userstateclose(L);

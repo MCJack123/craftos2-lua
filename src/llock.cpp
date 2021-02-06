@@ -5,7 +5,6 @@ extern "C" {
 #include "lstate.h"
 }
 #include <mutex>
-#include <stdio.h>
 
 extern "C" {
     void _lua_lock(lua_State *L) {

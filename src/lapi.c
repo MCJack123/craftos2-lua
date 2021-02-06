@@ -795,7 +795,7 @@ LUA_API void lua_vcall (lua_State *L, int nargs, int nresults, void *ctx) {
    if (ctx == NULL)
      flags = LUA_NOYIELD | LUA_NOVPCALL;
    else {
-     lua_assert(iscfunction(L->ci->func));
+     //lua_assert(iscfunction(L->ci->func));
      L->ctx = ctx;
      flags = 0;
    }
@@ -1115,6 +1115,13 @@ LUA_API const char *lua_setupvalue (lua_State *L, int funcindex, int n) {
 LUA_API void lua_halt(lua_State *L) {
   lua_lock(L);
   G(L)->haltstate = 1;
+  lua_unlock(L);
+}
+
+LUA_API void lua_externalerror(lua_State *L, const char * message) {
+  lua_lock(L);
+  G(L)->haltmessage = message;
+  G(L)->haltstate = 2;
   lua_unlock(L);
 }
 
