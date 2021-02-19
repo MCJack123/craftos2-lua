@@ -8,7 +8,9 @@
 *.exp
 *.exe
 /.vs
+x86
 x64
+ARM64
 lua
 luac
 *.vcxproj.user
