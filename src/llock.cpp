@@ -17,8 +17,8 @@ extern "C" {
             //fprintf(stderr, "Attempted to unlock a thread twice!\n");
             return;
         }
-        ((std::mutex*)G(L)->lock)->unlock();
         G(L)->lockstate = 0;
+        ((std::mutex*)G(L)->lock)->unlock();
     }
 
     void * _lua_newlock() {
