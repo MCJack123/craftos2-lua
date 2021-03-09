@@ -408,7 +408,7 @@ static GCObject **sweeplist (lua_State *L, GCObject **p, lu_mem count) {
   GCObject *curr;
   global_State *g = G(L);
   int deadmask = otherwhite(g);
-  while ((curr = *p) != NULL && count-- > 0) {
+  while ((curr = *p) > (GCObject*)255 && count-- > 0) {
     if (curr->gch.tt == LUA_TTHREAD)  /* sweep open upvalues of each thread */
       sweepwholelist(L, &gco2th(curr)->openupval);
     if ((curr->gch.marked ^ WHITEBITS) & deadmask) {  /* not dead? */
