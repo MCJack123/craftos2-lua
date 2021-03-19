@@ -394,6 +394,38 @@ static int db_debug (lua_State *L) {
   }
 }
 
+/* Lua 5.3 additions */
+
+/*
+** Check whether a given upvalue from a given closure exists and
+** returns its index
+*/
+static int checkupval (lua_State *L, int argf, int argnup) {
+  int nup = (int)luaL_checkinteger(L, argnup);  /* upvalue index */
+  luaL_checktype(L, argf, LUA_TFUNCTION);  /* closure */
+  luaL_argcheck(L, (lua_getupvalue(L, argf, nup) != NULL), argnup,
+                   "invalid upvalue index");
+  return nup;
+}
+
+
+static int db_upvalueid (lua_State *L) {
+  int n = checkupval(L, 1, 2);
+  lua_pushlightuserdata(L, lua_upvalueid(L, 1, n));
+  return 1;
+}
+
+
+static int db_upvaluejoin (lua_State *L) {
+  int n1 = checkupval(L, 1, 2);
+  int n2 = checkupval(L, 3, 4);
+  luaL_argcheck(L, !lua_iscfunction(L, 1), 1, "Lua function expected");
+  luaL_argcheck(L, !lua_iscfunction(L, 3), 3, "Lua function expected");
+  lua_upvaluejoin(L, 1, n1, 3, n2);
+  return 0;
+}
+
+
 static luaL_Reg dblib[] = {
   {"debug", db_debug},
   {"getfenv", db_getfenv},
@@ -411,6 +443,8 @@ static luaL_Reg dblib[] = {
   {"setupvalue", db_setupvalue},
   {"traceback", db_errorfb},
   {"unsetbreakpoint", NULL},
+  {"upvalueid", db_upvalueid},
+  {"upvaluejoin", db_upvaluejoin},
   {NULL, NULL}
 };
 

@@ -1112,6 +1112,46 @@ LUA_API const char *lua_setupvalue (lua_State *L, int funcindex, int n) {
   return name;
 }
 
+static UpVal **getupvalref (lua_State *L, int fidx, int n) {
+  LClosure *f;
+  StkId fi = index2adr(L, fidx);
+  api_check(L, ttisLclosure(fi), "Lua function expected");
+  f = &clvalue(fi)->l;
+  api_check(L, (1 <= n && n <= f->p->sizeupvalues), "invalid upvalue index");
+  return &f->upvals[n - 1];  /* get its upvalue pointer */
+}
+
+
+LUA_API void *lua_upvalueid (lua_State *L, int fidx, int n) {
+  StkId fi = index2adr(L, fidx);
+  if (ttype(fi) != LUA_TFUNCTION) {
+    api_check(L, 0, "closure expected");
+    return NULL;
+  }
+  if (!fi->value.gc->cl.c.isC) {  /* lua closure */
+    return *getupvalref(L, fidx, n);
+  }
+  else {  /* C closure */
+    CClosure *f = &clvalue(fi)->c;
+    api_check(L, 1 <= n && n <= f->nupvalues, "invalid upvalue index");
+    return &f->upvalue[n - 1];
+  }
+}
+
+
+LUA_API void lua_upvaluejoin (lua_State *L, int fidx1, int n1,
+                                            int fidx2, int n2) {
+  UpVal **up1 = getupvalref(L, fidx1, n1);
+  UpVal **up2 = getupvalref(L, fidx2, n2);
+  if (*up1 == *up2)
+    return;
+  //luaC_upvdeccount(L, *up1);
+  *up1 = *up2;
+  //(*up1)->refcount++;
+  //if (upisopen(*up1)) (*up1)->u.open.touched = 1;
+  luaC_upvalbarrier(L, *up1);
+}
+
 LUA_API void lua_halt(lua_State *L) {
   lua_lock(L);
   G(L)->haltstate = 1;

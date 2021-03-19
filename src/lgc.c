@@ -678,6 +678,21 @@ void luaC_barrierback (lua_State *L, Table *t) {
   g->grayagain = o;
 }
 
+/*
+** barrier for assignments to closed upvalues. Because upvalues are
+** shared among closures, it is impossible to know the color of all
+** closures pointing to it. So, we assume that the object being assigned
+** must be marked.
+*/
+void luaC_upvalbarrier_ (lua_State *L, UpVal *uv) {
+  global_State *g = G(L);
+  GCObject *o = gcvalue(uv->v);
+  lua_assert(!upisopen(uv));  /* ensured by macro luaC_upvalbarrier */
+  if (g->gcstate <= GCSpropagate)
+    markobject(g, o);
+}
+
+
 
 void luaC_link (lua_State *L, GCObject *o, lu_byte tt) {
   global_State *g = G(L);

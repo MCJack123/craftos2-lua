@@ -363,6 +363,10 @@ LUA_API const char *lua_setlocal (lua_State *L, const lua_Debug *ar, int n);
 LUA_API const char *lua_getupvalue (lua_State *L, int funcindex, int n);
 LUA_API const char *lua_setupvalue (lua_State *L, int funcindex, int n);
 
+LUA_API void *(lua_upvalueid) (lua_State *L, int fidx, int n);
+LUA_API void  (lua_upvaluejoin) (lua_State *L, int fidx1, int n1,
+                                               int fidx2, int n2);
+
 LUA_API int lua_sethook (lua_State *L, lua_Hook func, int mask, int count);
 LUA_API lua_Hook lua_gethook (lua_State *L);
 LUA_API int lua_gethookmask (lua_State *L);
