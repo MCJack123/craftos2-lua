@@ -607,6 +607,7 @@ LUA_API int lua_getmetatable (lua_State *L, int objindex) {
     case LUA_TUSERDATA:
       mt = uvalue(obj)->metatable;
       break;
+    case LUA_TNONE: break;  /* safety net */
     default:
       mt = G(L)->mt[ttype(obj)];
       break;

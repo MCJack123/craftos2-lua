@@ -28,7 +28,7 @@ static int foreachi (lua_State *L) {
     goto resume;
   }
   n = aux_igetn(L, 1, -1);
-   luaL_checktype(L, 2, LUA_TFUNCTION);
+  luaL_checktype(L, 2, LUA_TFUNCTION);
   lua_settop(L, 2);
   lua_pushinteger(L, n);  /* cache n because aux_igetn may be expensive */
    for (i=1; i <= n; i++) {
@@ -47,6 +47,7 @@ resume:
 
 static int foreach (lua_State *L) {
   if (lua_vcontext(L)) goto resume;
+  luaL_checktype(L, 1, LUA_TTABLE);
   luaL_checktype(L, 2, LUA_TFUNCTION);
   lua_pushnil(L);  /* first key */
   while (lua_next(L, 1)) {
