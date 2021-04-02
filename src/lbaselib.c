@@ -311,14 +311,15 @@ static int luaB_load (lua_State *L) {
   size_t l;
   const char *s = lua_tolstring(L, 1, &l);
   const char *mode = luaL_optstring(L, 3, "bt");
-  int env = (!lua_isnone(L, 4) ? 4 : 0);  /* 'env' index or 0 if no 'env' */
+  int env = (!lua_isnoneornil(L, 4) ? 4 : 0);  /* 'env' index or 0 if no 'env' */
+  int t = lua_type(L, 1);
+  if (t != LUA_TFUNCTION && t != LUA_TSTRING) luaL_error(L, "bad argument #1 (expected function or string, got %s)", lua_typename(L, t));
   if (s != NULL) {  /* loading a string? */
     const char *chunkname = luaL_optstring(L, 2, s);
     status = luaL_loadbufferx(L, s, l, chunkname, mode);
   }
   else {  /* loading from a reader function */
     const char *chunkname = luaL_optstring(L, 2, "=(load)");
-    if (lua_type(L, 1) != LUA_TFUNCTION) luaL_error(L, "bad argument #1 (expected function or string, got %s)", lua_typename(L, lua_type(L, 1)));
     lua_settop(L, RESERVEDSLOT);  /* create reserved slot */
     status = lua_load(L, generic_reader, NULL, chunkname, mode);
   }
