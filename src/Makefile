@@ -6,13 +6,15 @@
 # Your platform. See PLATS for possible values.
 PLAT= none
 
-CC= gcc
+CC?= gcc
+CXX?= g++
 CFLAGS= -O2 -Wall -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCFLAGS)
+CXXFLAGS= $(CFLAGS) 
 LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
 LIBS= -lm $(SYSLIBS) $(MYLIBS)
 
-AR= ar rcu
-RANLIB= ranlib
+AR?= ar rcu
+RANLIB?= ranlib
 RM= rm -f
 
 SYSCFLAGS=
@@ -26,7 +28,7 @@ MYOBJS=
 
 # == END OF USER SETTINGS -- NO NEED TO CHANGE ANYTHING BELOW THIS LINE =======
 
-PLATS= aix ansi bsd freebsd generic linux macosx mingw posix solaris emscripten
+PLATS= aix ansi bsd freebsd generic linux macosx macosx-arm mingw posix solaris emscripten
 
 LUA_A?=	liblua.a
 CORE_O=	lapi.o lcode.o lctype.o ldebug.o ldo.o ldump.o lfunc.o lgc.o llex.o \
@@ -106,7 +108,7 @@ linux:
 	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_LINUX" SYSLIBS="-Wl,-E -ldl -lreadline"
 
 macosx:
-	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_MACOSX -mmacosx-version-min=10.9" SYSLIBS="-lreadline" CC=cc
+	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_MACOSX -mmacosx-version-min=10.9" SYSLIBS="-lreadline" CC=cc CXX=c++
 
 macosx-arm:
 	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_MACOSX -mmacosx-version-min=11.0 -target arm64-apple-macos11" SYSLIBS="-lreadline" CC=cc LUA_A="liblua-arm64.a"
@@ -122,6 +124,9 @@ posix:
 
 solaris:
 	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_POSIX -DLUA_USE_DLOPEN" SYSLIBS="-ldl"
+
+emscripten:
+	$(MAKE) $(ALL) CC=" emcc" CXX=" em++" AR=" emar rcu" RANLIB=" emranlib" SYSCFLAGS="-DLUA_USE_LINUX -fPIC" SYSLIBS="-Wl,-E -ldl -lreadline -lhistory -lncurses"
 
 # list targets that do not create files (but not all makes understand .PHONY)
 .PHONY: all $(PLATS) default o a clean depend echo none
