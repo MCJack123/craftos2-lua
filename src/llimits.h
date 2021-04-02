@@ -203,6 +203,8 @@ typedef lu_int32 Instruction;
 ** both small and large values (outside the range of integers).
 */
 
+#define lua_number2unsigned(i,n)	((i)=(lua_Unsigned)(n))
+
 #if defined(MS_ASMTRICK) || defined(LUA_MSASMTRICK)	/* { */
 /* trick with Microsoft assembler for X86 */
 
@@ -259,7 +261,7 @@ union luai_Cast { double l_d; LUA_INT32 l_p[2]; };
 
 #if !defined(lua_number2unsigned)	/* { */
 /* the following definition assures proper modulo behavior */
-#if (defined(LUA_NUMBER_DOUBLE) || defined(LUA_NUMBER_FLOAT)) && false
+#if (defined(LUA_NUMBER_DOUBLE) || defined(LUA_NUMBER_FLOAT))
 #include <math.h>
 #define SUPUNSIGNED	((lua_Number)(~(lua_Unsigned)0) + 1)
 #define lua_number2unsigned(i,n)  \
