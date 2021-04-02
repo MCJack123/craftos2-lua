@@ -590,6 +590,10 @@ typedef struct Table {
 
 LUAI_DDEC const TValue luaO_nilobject_;
 
+/* size of buffer for 'luaO_utf8esc' function */
+#define UTF8BUFFSZ      8
+
+
 
 LUAI_FUNC int luaO_int2fb (unsigned int x);
 LUAI_FUNC int luaO_fb2int (int x);

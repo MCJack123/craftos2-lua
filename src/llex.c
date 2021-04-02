@@ -7,6 +7,7 @@
 
 #include <locale.h>
 #include <string.h>
+#include <ctype.h>
 
 #define llex_c
 #define LUA_CORE
@@ -16,6 +17,9 @@
 #include "lctype.h"
 #include "ldo.h"
 #include "llex.h"
+
+
+
 #include "lobject.h"
 #include "lparser.h"
 #include "lstate.h"
@@ -340,6 +344,35 @@ static int readdecesc (LexState *ls) {
 }
 
 
+static int readutfesc (LexState *ls) {
+  int c[10], i;
+  int n;
+  next(ls);
+  c[0] = ls->current;
+  if (ls->current != '{') escerror(ls, c, 0, "missing '{'");
+  next(ls);
+  n = 0;
+  i = 1;
+  while (n <= 0x10FFFF && ls->current != EOZ && isxdigit(ls->current)) {
+    c[i] = ls->current;
+    n = (n << 4) | luaO_hexavalue(c[i]);
+    next(ls);
+    i++;
+  }
+  c[i] = ls->current;
+  if (n > 0x10FFFF) escerror(ls, c, i-1, "UTF-8 value too large");
+  if (c[i] != '}') escerror(ls, c, i, "missing '}'");
+  else if (n > 0xFFFF) {
+    save(ls, 0xF0 | (n & 0x1C0000) >> 18);
+    save(ls, 0x80 | (n & 0x3F000) >> 12);
+  } else if (n > 0x7FF) save(ls, 0xE0 | (n & 0xF000) >> 12);
+  else if (n > 0x7F) save(ls, 0xC0 | (n & 0x7C0) >> 6);
+  else {return n;}
+  if (n > 0x7FF) save(ls, 0x80 | (n & 0xFC0) >> 6);
+  return 0x80 | (n & 0x3F);
+}
+
+
 static void read_string (LexState *ls, int del, SemInfo *seminfo) {
   save_and_next(ls);  /* keep delimiter (for error messages) */
   while (ls->current != del) {
@@ -361,6 +394,7 @@ static void read_string (LexState *ls, int del, SemInfo *seminfo) {
           case 'n': c = '\n'; goto read_save;
           case 'r': c = '\r'; goto read_save;
           case 't': c = '\t'; goto read_save;
+          case 'u': c = readutfesc(ls); goto read_save;
           case 'v': c = '\v'; goto read_save;
           case 'x': c = readhexaesc(ls); goto read_save;
           case '\n': case '\r':
