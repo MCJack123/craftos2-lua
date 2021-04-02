@@ -13,7 +13,7 @@ CXXFLAGS= $(CFLAGS)
 LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
 LIBS= -lm $(SYSLIBS) $(MYLIBS)
 
-AR?= ar rcu
+AR= ar rcu
 RANLIB?= ranlib
 RM= rm -f
 
