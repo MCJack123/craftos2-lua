@@ -150,7 +150,13 @@ LUALIB_API void luaL_traceback (lua_State *L, lua_State *L1,
 ** =======================================================
 */
 
+// for CraftOS
 LUALIB_API int luaL_argerror (lua_State *L, int narg, const char *extramsg) {
+  return luaL_error(L, "bad argument #%d (%s)", narg, extramsg);
+}
+
+// for Lua
+LUALIB_API int luaL_argerror_ (lua_State *L, int narg, const char *extramsg) {
   lua_Debug ar;
   if (!lua_getstack(L, 0, &ar))  /* no stack frame? */
     return luaL_error(L, "bad argument #%d (%s)", narg, extramsg);
