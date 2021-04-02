@@ -1,5 +1,5 @@
 /*
-** $Id: ldo.h,v 2.7.1.1 2007/12/27 13:02:25 roberto Exp $
+** $Id: ldo.h,v 2.20.1.1 2013/04/12 18:48:47 roberto Exp $
 ** Stack and Call structure of Lua
 ** See Copyright Notice in lua.h
 */
@@ -13,65 +13,34 @@
 #include "lzio.h"
 
 
-#define luaD_checkstack(L,n)	\
-  if ((char *)L->stack_last - (char *)L->top <= (n)*(int)sizeof(TValue)) \
-    luaD_growstack(L, n); \
-  else condhardstacktests(luaD_reallocstack(L, L->stacksize - EXTRA_STACK - 1));
+#define luaD_checkstack(L,n)	if (L->stack_last - L->top <= (n)) \
+				    luaD_growstack(L, n); else condmovestack(L);
 
 
-#define incr_top(L) {luaD_checkstack(L,1); L->top++;}
+#define incr_top(L) {L->top++; luaD_checkstack(L,0);}
 
 #define savestack(L,p)		((char *)(p) - (char *)L->stack)
 #define restorestack(L,n)	((TValue *)((char *)L->stack + (n)))
 
-#define saveci(L,p)		((char *)(p) - (char *)L->base_ci)
-#define restoreci(L,n)		((CallInfo *)((char *)L->base_ci + (n)))
 
+/* type of protected functions, to be ran by `runprotected' */
+typedef void (*Pfunc) (lua_State *L, void *ud);
 
-/* results from luaD_precall */
-#define PCRLUA		0	/* initiated a call to a Lua function */
-#define PCRC		1	/* did a call to a C function */
-#define PCRYIELD	2	/* C function yielded */
-
-/* call flags for luaD_call, stored in least significant bits of nCcalls */
-#define LUA_NOHOOKS	1
-#define LUA_NOVPCALL	2
-#define LUA_NOYIELD	4
-
-#define nohooks(L)	(L->nCcalls & LUA_NOHOOKS)
-#define novpcall(L)	(L->nCcalls & LUA_NOVPCALL)
-#define noyield(L)	(L->nCcalls & LUA_NOYIELD)
-
-#define notresumable(L, stmt) \
-	{ unsigned short save_ncc = L->nCcalls; \
-	  L->nCcalls = save_ncc | (LUA_NOYIELD | LUA_NOVPCALL); \
-	  stmt \
-	  L->nCcalls = save_ncc; }
-
-
-/* type of protected functions, to be run by `runprotected' */
-typedef int (*Pfunc) (lua_State *L, void *ud);
-
-LUAI_FUNC int luaD_protectedparser (lua_State *L, ZIO *z, const char *name);
-LUAI_FUNC void luaD_callhook (lua_State *L, int event, int line);
+LUAI_FUNC int luaD_protectedparser (lua_State *L, ZIO *z, const char *name,
+                                                  const char *mode);
+LUAI_FUNC void luaD_hook (lua_State *L, int event, int line);
 LUAI_FUNC int luaD_precall (lua_State *L, StkId func, int nresults);
-LUAI_FUNC void luaD_call (lua_State *L, StkId func, int nresults, int callflags);
+LUAI_FUNC void luaD_call (lua_State *L, StkId func, int nResults,
+                                        int allowyield);
+LUAI_FUNC int luaD_pcall (lua_State *L, Pfunc func, void *u,
+                                        ptrdiff_t oldtop, ptrdiff_t ef);
 LUAI_FUNC int luaD_poscall (lua_State *L, StkId firstResult);
-LUAI_FUNC void luaD_reallocCI (lua_State *L, int newsize);
 LUAI_FUNC void luaD_reallocstack (lua_State *L, int newsize);
 LUAI_FUNC void luaD_growstack (lua_State *L, int n);
+LUAI_FUNC void luaD_shrinkstack (lua_State *L);
 
-LUAI_FUNC void luaD_throw (lua_State *L, int errcode);
+LUAI_FUNC l_noret luaD_throw (lua_State *L, int errcode);
 LUAI_FUNC int luaD_rawrunprotected (lua_State *L, Pfunc f, void *ud);
-LUAI_FUNC int luaD_pcall (lua_State *L, Pfunc func, void *ud,
-                          ptrdiff_t old_top, int ef, unsigned int flagmask);
-
-#define luaD_catch(L, ef) \
-	{ lua_assert((ef) + 1 >= 0 && (ef) + 1 <= 255); \
-	  L->ci->hookmask = L->hookmask; \
-	  L->ci->errfunc = (ef) + 1; }
-
-LUAI_FUNC void luaD_seterrorobj (lua_State *L, int errcode, StkId oldtop);
 
 #endif
 
