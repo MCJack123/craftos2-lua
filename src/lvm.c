@@ -319,7 +319,8 @@ void luaV_concat (lua_State *L, int total, int last) {
 
 static lua_Number luai_nummod(lua_Number a, lua_Number b) {
   lua_Number q = fmod(a, b);
-  if ((a < 0) != (b < 0) && q != 0) return q + b;
+  if (q == 0) return 0;
+  else if ((a < 0) != (b < 0)) return q + b;
   return q;
 }
 

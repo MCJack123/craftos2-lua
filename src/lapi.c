@@ -1166,3 +1166,13 @@ LUA_API void lua_externalerror(lua_State *L, const char * message) {
   lua_unlock(L);
 }
 
+LUA_API void lua_setlockstate(lua_State *L, int enabled) {
+  lua_lock(L);
+  if (!enabled) {
+    G(L)->lockstate = G(L)->lockstate >= 2 ? 2 : 3;
+  } else {
+    G(L)->lockstate = G(L)->lockstate >= 2 ? 0 : 1;
+  }
+  lua_unlock(L);
+}
+

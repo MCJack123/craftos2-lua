@@ -8,16 +8,17 @@ extern "C" {
 
 extern "C" {
     void _lua_lock(lua_State *L) {
+        if (G(L)->lockstate == 2) return;
         ((std::mutex*)G(L)->lock)->lock();
         G(L)->lockstate = 1;
     }
 
     void _lua_unlock(lua_State *L) {
-        if (!G(L)->lockstate) {
+        if (G(L)->lockstate != 1 && G(L)->lockstate != 3) {
             //fprintf(stderr, "Attempted to unlock a thread twice!\n");
             return;
         }
-        G(L)->lockstate = 0;
+        G(L)->lockstate--;
         ((std::mutex*)G(L)->lock)->unlock();
     }
 
