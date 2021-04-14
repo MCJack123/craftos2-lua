@@ -393,7 +393,7 @@ LUALIB_API int luaL_igetn (lua_State *L, int t, int ictx) {
     }
     lua_pop(L, 2);
   }
-  return (int)lua_objlen(L, t);
+  return (int)lua_totalobjlen(L, t);
 }
 
 #endif
