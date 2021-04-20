@@ -868,6 +868,24 @@ static int gmatch (lua_State *L) {
 }
 
 
+struct gsub_state {
+  size_t srcl, lp;
+  const char *src;  /* subject */
+  const char *p;  /* pattern */
+  const char *lastmatch;  /* end of last match */
+  int tr;  /* replacement type */
+  lua_Integer max_s;  /* max replacements */
+  int anchor;
+  lua_Integer n;  /* replacement count */
+  int changed;  /* change flag */
+  MatchState ms;
+  luaL_Buffer b;
+  const char * e;
+};
+
+static int str_gsubk (lua_State *L, int status, lua_KContext ctxi);
+
+
 static void add_s (MatchState *ms, luaL_Buffer *b, const char *s,
                                                    const char *e) {
   size_t l;
@@ -903,82 +921,104 @@ static void add_s (MatchState *ms, luaL_Buffer *b, const char *s,
 ** Return true if the original string was changed. (Function calls and
 ** table indexing resulting in nil or false do not change the subject.)
 */
-static int add_value (MatchState *ms, luaL_Buffer *b, const char *s,
-                                      const char *e, int tr) {
-  lua_State *L = ms->L;
-  switch (tr) {
+static int add_value (struct gsub_state* ctx) {
+  lua_State *L = ctx->ms.L;
+  switch (ctx->tr) {
     case LUA_TFUNCTION: {  /* call the function */
       int n;
       lua_pushvalue(L, 3);  /* push the function */
-      n = push_captures(ms, s, e);  /* all captures as arguments */
-      lua_call(L, n, 1);  /* call it */
+      n = push_captures(&ctx->ms, ctx->src, ctx->e);  /* all captures as arguments */
+      lua_callk(L, n, 1, (lua_KContext)ctx, str_gsubk);  /* call it */
       break;
     }
     case LUA_TTABLE: {  /* index the table */
-      push_onecapture(ms, 0, s, e);  /* first capture is the index */
+      push_onecapture(&ctx->ms, 0, ctx->src, ctx->e);  /* first capture is the index */
       lua_gettable(L, 3);
       break;
     }
     default: {  /* LUA_TNUMBER or LUA_TSTRING */
-      add_s(ms, b, s, e);  /* add value to the buffer */
+      add_s(&ctx->ms, &ctx->b, ctx->src, ctx->e);  /* add value to the buffer */
       return 1;  /* something changed */
     }
   }
   if (!lua_toboolean(L, -1)) {  /* nil or false? */
     lua_pop(L, 1);  /* remove value */
-    luaL_addlstring(b, s, e - s);  /* keep original text */
+    luaL_addlstring(&ctx->b, ctx->src, ctx->e - ctx->src);  /* keep original text */
     return 0;  /* no changes */
   }
   else if (l_unlikely(!lua_isstring(L, -1)))
     return luaL_error(L, "invalid replacement value (a %s)",
                          luaL_typename(L, -1));
   else {
-    luaL_addvalue(b);  /* add result to accumulator */
+    luaL_addvalue(&ctx->b);  /* add result to accumulator */
     return 1;  /* something changed */
   }
 }
 
 
 static int str_gsub (lua_State *L) {
-  size_t srcl, lp;
-  const char *src = luaL_checklstring(L, 1, &srcl);  /* subject */
-  const char *p = luaL_checklstring(L, 2, &lp);  /* pattern */
-  const char *lastmatch = NULL;  /* end of last match */
-  int tr = lua_type(L, 3);  /* replacement type */
-  lua_Integer max_s = luaL_optinteger(L, 4, srcl + 1);  /* max replacements */
-  int anchor = (*p == '^');
-  lua_Integer n = 0;  /* replacement count */
-  int changed = 0;  /* change flag */
-  MatchState ms;
-  luaL_Buffer b;
-  luaL_argexpected(L, tr == LUA_TNUMBER || tr == LUA_TSTRING ||
-                   tr == LUA_TFUNCTION || tr == LUA_TTABLE, 3,
+  void *alloc_ud;
+  struct gsub_state *ctx = lua_getallocf(L, &alloc_ud)(alloc_ud, NULL, 0, sizeof(struct gsub_state));
+  ctx->src = luaL_checklstring(L, 1, &ctx->srcl);  /* subject */
+  ctx->p = luaL_checklstring(L, 2, &ctx->lp);  /* pattern */
+  ctx->lastmatch = NULL;  /* end of last match */
+  ctx->tr = lua_type(L, 3);  /* replacement type */
+  ctx->max_s = luaL_optinteger(L, 4, ctx->srcl + 1);  /* max replacements */
+  ctx->anchor = (*ctx->p == '^');
+  ctx->n = 0;  /* replacement count */
+  ctx->changed = 0;  /* change flag */
+  luaL_argexpected(L, ctx->tr == LUA_TNUMBER || ctx->tr == LUA_TSTRING ||
+                   ctx->tr == LUA_TFUNCTION || ctx->tr == LUA_TTABLE, 3,
                       "string/function/table");
-  luaL_buffinit(L, &b);
-  if (anchor) {
-    p++; lp--;  /* skip anchor character */
+  luaL_buffinit(L, &ctx->b);
+  if (ctx->anchor) {
+    ctx->p++; ctx->lp--;  /* skip anchor character */
   }
-  prepstate(&ms, L, src, srcl, p, lp);
-  while (n < max_s) {
-    const char *e;
-    reprepstate(&ms);  /* (re)prepare state for new match */
-    if ((e = match(&ms, src, p)) != NULL && e != lastmatch) {  /* match? */
-      n++;
-      changed = add_value(&ms, &b, src, e, tr) | changed;
-      src = lastmatch = e;
+  prepstate(&ctx->ms, L, ctx->src, ctx->srcl, ctx->p, ctx->lp);
+  return str_gsubk(L, 0, (lua_KContext)ctx);
+}
+
+
+static int str_gsubk (lua_State *L, int status, lua_KContext ctxi) {
+  void* alloc_ud;
+  struct gsub_state* ctx = (struct gsub_state*)ctxi;
+  if (status == LUA_YIELD) {
+    if (!lua_toboolean(L, -1)) {  /* nil or false? */
+      lua_pop(L, 1);  /* remove value */
+      luaL_addlstring(&ctx->b, ctx->src, ctx->e - ctx->src);  /* keep original text */
+      ctx->changed |= 0;  /* no changes */
     }
-    else if (src < ms.src_end)  /* otherwise, skip one character */
-      luaL_addchar(&b, *src++);
-    else break;  /* end of subject */
-    if (anchor) break;
+    else if (l_unlikely(!lua_isstring(L, -1)))
+      return luaL_error(L, "invalid replacement value (a %s)",
+                           luaL_typename(L, -1));
+    else {
+      luaL_addvalue(&ctx->b);  /* add result to accumulator */
+      ctx->changed |= 1;  /* something changed */
+    }
+    ctx->src = ctx->lastmatch = ctx->e;
+    if (ctx->anchor) goto finish;
   }
-  if (!changed)  /* no changes? */
+  while (ctx->n < ctx->max_s) {
+    reprepstate(&ctx->ms);  /* (re)prepare state for new match */
+    if ((ctx->e = match(&ctx->ms, ctx->src, ctx->p)) != NULL && ctx->e != ctx->lastmatch) {  /* match? */
+      ctx->n++;
+      ctx->changed = add_value(ctx) | ctx->changed;
+      ctx->src = ctx->lastmatch = ctx->e;
+    }
+    else if (ctx->src < ctx->ms.src_end)  /* otherwise, skip one character */
+      luaL_addchar(&ctx->b, *ctx->src++);
+    else break;  /* end of subject */
+    if (ctx->anchor) break;
+  }
+finish:
+  if (!ctx->changed)  /* no changes? */
     lua_pushvalue(L, 1);  /* return original string */
   else {  /* something changed */
-    luaL_addlstring(&b, src, ms.src_end-src);
-    luaL_pushresult(&b);  /* create and return new string */
+    luaL_addlstring(&ctx->b, ctx->src, ctx->ms.src_end-ctx->src);
+    luaL_pushresult(&ctx->b);  /* create and return new string */
   }
-  lua_pushinteger(L, n);  /* number of substitutions */
+  lua_pushinteger(L, ctx->n);  /* number of substitutions */
+  lua_getallocf(L, &alloc_ud)(alloc_ud, ctx, sizeof(struct gsub_state), 0);
   return 2;
 }
 
