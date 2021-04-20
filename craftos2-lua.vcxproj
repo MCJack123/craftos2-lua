@@ -153,7 +153,7 @@
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Lib>
     <PostBuildEvent>
-      <Command>copy src\lua52d.dll ..\x64\Debug\lua52d.dll</Command>
+      <Command>copy src\lua54d.dll ..\x64\Debug\lua54d.dll</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
@@ -176,7 +176,7 @@
       <PreprocessorDefinitions>_WINDLL;LUA_BUILD_AS_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <PostBuildEvent>
-      <Command>copy src\lua52.dll ..\x64\ReleaseC\lua52.dll</Command>
+      <Command>copy src\lua54.dll ..\x64\ReleaseC\lua54.dll</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">

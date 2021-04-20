@@ -122,7 +122,7 @@ static int b_arshift (lua_State *L) {
   else {  /* arithmetic shift for 'negative' number */
     if (i >= LUA_NBITS) r = ALLONES;
     else
-      r = trim((r >> i) | ~(~(b_uint)0 >> i));  /* add signal bit */
+      r = trim((r >> i) | ~((~(b_uint)0 & ALLONES) >> i));  /* add signal bit */
     lua_pushunsigned(L, r);
     return 1;
   }

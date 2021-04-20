@@ -449,7 +449,12 @@ LUALIB_API lua_Integer luaL_checkinteger (lua_State *L, int arg) {
   int isnum;
   lua_Integer d = lua_tointegerx(L, arg, &isnum);
   if (l_unlikely(!isnum)) {
-    interror(L, arg);
+    lua_Number n = lua_tonumberx(L, arg, &isnum);
+    if (l_unlikely(!isnum)) {
+        interror(L, arg);
+    } else {
+        return (lua_Integer)n;
+    }
   }
   return d;
 }
