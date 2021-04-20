@@ -113,6 +113,8 @@ void luaD_seterrorobj (lua_State *L, int errcode, StkId oldtop) {
 
 
 l_noret luaD_throw (lua_State *L, int errcode) {
+  if (errcode != LUA_YIELD && (L->hookmask & LUA_MASKERROR))
+    luaD_hook(L, LUA_HOOKERROR, -1, 0, 0);
   if (L->errorJmp) {  /* thread has an error handler? */
     L->errorJmp->status = errcode;  /* set status */
     LUAI_THROW(L, L->errorJmp);  /* jump to it */
