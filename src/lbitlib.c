@@ -12,6 +12,10 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
+#define luaL_checkunsigned(L,a)	((lua_Unsigned)luaL_checkinteger(L,a))
+#define luaL_optunsigned(L,a,d)	\
+	((lua_Unsigned)luaL_optinteger(L,a,(lua_Integer)(d)))
+#define lua_pushunsigned(L,a) (lua_pushinteger(L, (lua_Integer)(a)))
 
 /* number of bits to consider in a number */
 #if !defined(LUA_NBITS)
@@ -101,18 +105,18 @@ static int b_shift (lua_State *L, b_uint r, int i) {
 
 
 static int b_lshift (lua_State *L) {
-  return b_shift(L, luaL_checkunsigned(L, 1), luaL_checkint(L, 2));
+  return b_shift(L, luaL_checkunsigned(L, 1), luaL_checkinteger(L, 2));
 }
 
 
 static int b_rshift (lua_State *L) {
-  return b_shift(L, luaL_checkunsigned(L, 1), -luaL_checkint(L, 2));
+  return b_shift(L, luaL_checkunsigned(L, 1), -luaL_checkinteger(L, 2));
 }
 
 
 static int b_arshift (lua_State *L) {
   b_uint r = luaL_checkunsigned(L, 1);
-  int i = luaL_checkint(L, 2);
+  int i = luaL_checkinteger(L, 2);
   if (i < 0 || !(r & ((b_uint)1 << (LUA_NBITS - 1))))
     return b_shift(L, r, -i);
   else {  /* arithmetic shift for 'negative' number */
@@ -137,12 +141,12 @@ static int b_rot (lua_State *L, int i) {
 
 
 static int b_lrot (lua_State *L) {
-  return b_rot(L, luaL_checkint(L, 2));
+  return b_rot(L, luaL_checkinteger(L, 2));
 }
 
 
 static int b_rrot (lua_State *L) {
-  return b_rot(L, -luaL_checkint(L, 2));
+  return b_rot(L, -luaL_checkinteger(L, 2));
 }
 
 
@@ -153,8 +157,8 @@ static int b_rrot (lua_State *L) {
 ** 'width' being used uninitialized.)
 */
 static int fieldargs (lua_State *L, int farg, int *width) {
-  int f = luaL_checkint(L, farg);
-  int w = luaL_optint(L, farg + 1, 1);
+  int f = luaL_checkinteger(L, farg);
+  int w = luaL_optinteger(L, farg + 1, 1);
   luaL_argcheck(L, 0 <= f, farg, "field cannot be negative");
   luaL_argcheck(L, 0 < w, farg + 1, "width must be positive");
   if (f + w > LUA_NBITS)

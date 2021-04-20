@@ -97,7 +97,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)craftos2-lua\src\</OutDir>
-    <TargetName>lua52d</TargetName>
+    <TargetName>lua54d</TargetName>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
@@ -105,7 +105,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)craftos2-lua\src\</OutDir>
-    <TargetName>lua52</TargetName>
+    <TargetName>lua54</TargetName>
     <CodeAnalysisRuleSet>..\analysis.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
@@ -147,7 +147,7 @@
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PreprocessorDefinitions>_WINDLL;LUA_BUILD_AS_DLL;LUA_COMPAT_UNPACK;LUA_COMPAT_LOADSTRING;LUA_COMPAT_LOG10;LUA_COMPAT_MAXN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDLL;LUA_BUILD_AS_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Lib>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
@@ -173,7 +173,7 @@
     <ClCompile>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PreprocessorDefinitions>_WINDLL;LUA_BUILD_AS_DLL;LUA_COMPAT_UNPACK;LUA_COMPAT_LOADSTRING;LUA_COMPAT_LOG10;LUA_COMPAT_MAXN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDLL;LUA_BUILD_AS_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <PostBuildEvent>
       <Command>copy src\lua52.dll ..\x64\ReleaseC\lua52.dll</Command>
@@ -188,6 +188,42 @@
       <Command>copy src\lua51.dll ..\x64\ReleaseC\lua51.dll</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
+  <ItemGroup>
+    <None Include="doc\contents.html" />
+    <None Include="doc\lua.html" />
+    <None Include="doc\luac.html" />
+    <None Include="doc\manual.html" />
+    <None Include="doc\readme.html" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\lapi.h" />
+    <ClInclude Include="src\lauxlib.h" />
+    <ClInclude Include="src\lcode.h" />
+    <ClInclude Include="src\lctype.h" />
+    <ClInclude Include="src\ldebug.h" />
+    <ClInclude Include="src\ldo.h" />
+    <ClInclude Include="src\lfunc.h" />
+    <ClInclude Include="src\lgc.h" />
+    <ClInclude Include="src\ljumptab.h" />
+    <ClInclude Include="src\llex.h" />
+    <ClInclude Include="src\llimits.h" />
+    <ClInclude Include="src\lmem.h" />
+    <ClInclude Include="src\lobject.h" />
+    <ClInclude Include="src\lopcodes.h" />
+    <ClInclude Include="src\lopnames.h" />
+    <ClInclude Include="src\lparser.h" />
+    <ClInclude Include="src\lprefix.h" />
+    <ClInclude Include="src\lstate.h" />
+    <ClInclude Include="src\lstring.h" />
+    <ClInclude Include="src\ltable.h" />
+    <ClInclude Include="src\ltm.h" />
+    <ClInclude Include="src\lua.h" />
+    <ClInclude Include="src\luaconf.h" />
+    <ClInclude Include="src\lualib.h" />
+    <ClInclude Include="src\lundump.h" />
+    <ClInclude Include="src\lvm.h" />
+    <ClInclude Include="src\lzio.h" />
+  </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\lapi.c" />
     <ClCompile Include="src\lauxlib.c" />
@@ -223,44 +259,6 @@
     <ClCompile Include="src\lutf8lib.c" />
     <ClCompile Include="src\lvm.c" />
     <ClCompile Include="src\lzio.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="etc\lua.hpp" />
-    <ClInclude Include="include\lauxlib.h" />
-    <ClInclude Include="include\lua.h" />
-    <ClInclude Include="include\luaconf.h" />
-    <ClInclude Include="include\lualib.h" />
-    <ClInclude Include="src\lapi.h" />
-    <ClInclude Include="src\lauxlib.h" />
-    <ClInclude Include="src\lcode.h" />
-    <ClInclude Include="src\lctype.h" />
-    <ClInclude Include="src\ldebug.h" />
-    <ClInclude Include="src\ldo.h" />
-    <ClInclude Include="src\lfunc.h" />
-    <ClInclude Include="src\lgc.h" />
-    <ClInclude Include="src\llex.h" />
-    <ClInclude Include="src\llimits.h" />
-    <ClInclude Include="src\lmem.h" />
-    <ClInclude Include="src\lobject.h" />
-    <ClInclude Include="src\lopcodes.h" />
-    <ClInclude Include="src\lparser.h" />
-    <ClInclude Include="src\lstate.h" />
-    <ClInclude Include="src\lstring.h" />
-    <ClInclude Include="src\ltable.h" />
-    <ClInclude Include="src\ltm.h" />
-    <ClInclude Include="src\lua.h" />
-    <ClInclude Include="src\luaconf.h" />
-    <ClInclude Include="src\lualib.h" />
-    <ClInclude Include="src\lundump.h" />
-    <ClInclude Include="src\lvm.h" />
-    <ClInclude Include="src\lzio.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="doc\contents.html" />
-    <None Include="doc\lua.html" />
-    <None Include="doc\luac.html" />
-    <None Include="doc\manual.html" />
-    <None Include="doc\readme.html" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
