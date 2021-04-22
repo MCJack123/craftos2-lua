@@ -8,6 +8,7 @@
 *.exp
 *.exe
 /.vs
+/.vscode
 x86
 x64
 ARM64
