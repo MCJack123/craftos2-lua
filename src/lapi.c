@@ -99,7 +99,9 @@ LUA_API int lua_pcall(lua_State *L, int na, int nr, int ef) {return lua_vpcall(L
 LUA_API int lua_checkstack (lua_State *L, int size) {
   int res = 1;
   lua_lock(L);
-  if (size > 0) {
+  if (size * (int)sizeof(TValue) < 0)
+    res = 0;  /* stack overflow */
+  else if (size > 0) {
     luaD_checkstack(L, size);
     if (L->ci->top < L->top + size)
       L->ci->top = L->top + size;
@@ -1202,3 +1204,4 @@ LUA_API void lua_setlockstate(lua_State *L, int enabled) {
   lua_unlock(L);
 }
 
+int luai_stacklimit = 20000;
