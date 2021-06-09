@@ -400,8 +400,8 @@ int luaV_execute (lua_State *L) {
     StkId ra;
     if (G(L)->haltstate) {  /* exit if the state was halted */
       if (G(L)->haltstate == 2) {  /* throw an error instead of halting fully */
-        luaC_checkGC(L);
         int concat = 0;
+        luaC_checkGC(L);
         if (G(L)->haltmessage) {
           if (!clvalue(L->ci->func)->c.isC && clvalue(L->ci->func)->l.p->lineinfo[pcRel(cast(const Instruction *, L->ctx), ci_func(L->ci)->l.p)] > 0) {
             char wheretemp[LUA_IDSIZE+20];  /* 20 extra characters should be enough for line number + 4 characters (:: <\0>) */

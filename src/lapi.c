@@ -817,20 +817,20 @@ LUA_API void *lua_vcontext (lua_State *L) {
 
 
 LUA_API void lua_vcall (lua_State *L, int nargs, int nresults, void *ctx) {
-   int flags;
-   lua_lock(L);
-   api_checknelems(L, nargs+1);
-   checkresults(L, nargs, nresults);
-   if (ctx == NULL)
-     flags = LUA_NOYIELD | LUA_NOVPCALL;
-   else {
-     //lua_assert(iscfunction(L->ci->func));
-     L->ctx = ctx;
-     flags = 0;
-   }
-   luaD_call(L, L->top - (nargs+1), nresults, flags);
-   if (L->top > L->ci->top) L->ci->top = L->top;
-   lua_unlock(L);
+  int flags;
+  lua_lock(L);
+  api_checknelems(L, nargs+1);
+  checkresults(L, nargs, nresults);
+  if (ctx == NULL)
+    flags = LUA_NOYIELD | LUA_NOVPCALL;
+  else {
+    //lua_assert(iscfunction(L->ci->func));
+    L->ctx = ctx;
+    flags = 0;
+  }
+  luaD_call(L, L->top - (nargs+1), nresults, flags);
+  if (L->top > L->ci->top) L->ci->top = L->top;
+  lua_unlock(L);
 }
 
 

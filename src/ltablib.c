@@ -6,6 +6,7 @@
 
 
 #include <stddef.h>
+#include <string.h>
 
 #define ltablib_c
 #define LUA_LIB
@@ -201,6 +202,26 @@ struct table_sort_state {
     struct table_sort_args * args;
 };
 
+static int l_strcmp (lua_State *L, int ls, int rs) {
+  size_t ll, lr;
+  const char *l = luaL_tolstring(L, ls, &ll);
+  const char *r = luaL_tolstring(L, rs, &lr);
+  for (;;) {
+    int temp = strcoll(l, r);
+    if (temp != 0) return temp;
+    else {  /* strings are equal up to a `\0' */
+      size_t len = strlen(l);  /* index of first `\0' in both strings */
+      if (len == lr)  /* r is finished? */
+        return (len == ll) ? 0 : 1;
+      else if (len == ll)  /* l is finished? */
+        return -1;  /* l is smaller than r (because r is not finished) */
+      /* both strings longer than `len'; go on comparing (after the `\0') */
+      len++;
+      l += len; ll -= len; r += len; lr -= len;
+    }
+  }
+}
+
 static int sort_comp (lua_State *L, int a, int b, struct table_sort_state * s, int ss) {
   if (!lua_isnil(L, 2)) {  /* function? */
     int res;
@@ -216,8 +237,32 @@ resume:
     s->s = 0;
     return res;
   }
-  else  /* a < b? */
-    return lua_lessthan(L, a, b);
+  else { /* a < b? */
+    /* return lua_lessthan(L, a, b); */
+    int res;
+    int t1 = lua_type(L, a);
+    int t2 = lua_type(L, b);
+    if (s->s) goto resume2;
+    if (t1 != t2)
+      return luaL_error(L, "attempt to compare %s with %s", lua_typename(L, t1), lua_typename(L, t2));
+    else if (t1 == LUA_TNUMBER) 
+      return lua_tonumber(L, a) < lua_tonumber(L, b);
+    else if (t1 == LUA_TSTRING)
+      return l_strcmp(L, a, b) < 0;
+    else if (luaL_getmetafield(L, a, "__lt") && luaL_getmetafield(L, b-1, "__lt") && lua_rawequal(L, -2, -1)) {
+      s->s = 1;
+      lua_pop(L, 1);
+      lua_pushvalue(L, a-1);  /* -1 to compensate function */
+      lua_pushvalue(L, b-2);  /* -2 to compensate function and `a' */
+      lua_vcall(L, 2, 1, s);
+resume2:
+      res = lua_toboolean(L, -1);
+      lua_pop(L, 1);
+      s->s = 0;
+      return res;
+    }
+    return luaL_error(L, "attempt to compare two %s values", lua_typename(L, t1));
+  }
 }
 
 static void auxsort (lua_State *L, struct table_sort_state * s, struct table_sort_args * a, int m) {
