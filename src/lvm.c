@@ -823,12 +823,25 @@ void luaV_resume (lua_State *L) {
     L->top--;
     setobjs2s(L, L->base + GETARG_A(i), L->top);
     break;
-  case OP_LT: case OP_LE: case OP_EQ:
+  case OP_LT: case OP_EQ:
     L->top--;
     if (!l_isfalse(L->top) != GETARG_A(i)) pc++;
     else dojump(L, pc, GETARG_sBx(*pc) + 1);
     SAVEPC(L, pc);
     break;
+  case OP_LE: {
+    TValue* k = clvalue(L->ci->func)->l.p->k;
+    StkId base = L->base;
+    int ok;
+    L->top--;
+    if (ttisnil(luaT_gettmbyobj(L, RKB(i), TM_LE)))
+      ok = l_isfalse(L->top);
+    else ok = !l_isfalse(L->top);
+    if (ok != GETARG_A(i)) pc++;
+    else dojump(L, pc, GETARG_sBx(*pc) + 1);
+    SAVEPC(L, pc);
+    break;
+  }
   case OP_TFORLOOP: {
     StkId cb;  /* call base */
     L->top = L->ci->top;
