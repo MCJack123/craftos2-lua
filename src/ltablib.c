@@ -204,8 +204,8 @@ struct table_sort_state {
 
 static int l_strcmp (lua_State *L, int ls, int rs) {
   size_t ll, lr;
-  const char *l = luaL_tolstring(L, ls, &ll);
-  const char *r = luaL_tolstring(L, rs, &lr);
+  const char *l = lua_tolstring(L, ls, &ll);
+  const char *r = lua_tolstring(L, rs, &lr);
   for (;;) {
     int temp = strcoll(l, r);
     if (temp != 0) return temp;
@@ -249,17 +249,23 @@ resume:
       return lua_tonumber(L, a) < lua_tonumber(L, b);
     else if (t1 == LUA_TSTRING)
       return l_strcmp(L, a, b) < 0;
-    else if (luaL_getmetafield(L, a, "__lt") && luaL_getmetafield(L, b-1, "__lt") && lua_rawequal(L, -2, -1)) {
-      s->s = 1;
-      lua_pop(L, 1);
-      lua_pushvalue(L, a-1);  /* -1 to compensate function */
-      lua_pushvalue(L, b-2);  /* -2 to compensate function and `a' */
-      lua_vcall(L, 2, 1, s);
+    else if (luaL_getmetafield(L, a, "__lt")) {
+      if (luaL_getmetafield(L, b-1, "__lt")) {
+        if (lua_rawequal(L, -2, -1)) {
+          s->s = ss;
+          lua_pop(L, 1);
+          lua_pushvalue(L, a-1);  /* -1 to compensate function */
+          lua_pushvalue(L, b-2);  /* -2 to compensate function and `a' */
+          lua_vcall(L, 2, 1, s);
 resume2:
-      res = lua_toboolean(L, -1);
+          res = lua_toboolean(L, -1);
+          lua_pop(L, 1);
+          s->s = 0;
+          return res;
+        }
+        lua_pop(L, 1);
+      }
       lua_pop(L, 1);
-      s->s = 0;
-      return res;
     }
     return luaL_error(L, "attempt to compare two %s values", lua_typename(L, t1));
   }
