@@ -161,7 +161,8 @@ const char *luaO_pushvfstring (lua_State *L, const char *fmt, va_list argp) {
       }
       case 'p': {
         char buff[4*sizeof(void *) + 8]; /* should be enough space for a `%p' */
-        sprintf(buff, "%p", va_arg(argp, void *));
+        //sprintf(buff, "%p", va_arg(argp, void *)); // not good enough - macOS gives an incompatible format here
+        sprintf(buff, "%tx", va_arg(argp, ptrdiff_t));
         pushstr(L, buff, 0);
         break;
       }
