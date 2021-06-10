@@ -350,7 +350,7 @@ resume5:
       s->j=s->i+1; s->i=a->u; a->u=s->j-2;
     }
     a->next = (struct table_sort_args*)alloc(ud, NULL, 0, sizeof(struct table_sort_args));
-    a->next->l = s->j, a->next->u = s->i;
+    a->next->l = s->j; a->next->u = s->i;
     a->next->next = NULL;
     auxsort(L, s, a->next, m + 1);  /* call recursively the smaller one */
     alloc(ud, a->next, sizeof(struct table_sort_args), 0);
@@ -361,10 +361,11 @@ resume5:
 
 static int sort (lua_State *L) {
   struct table_sort_state * s;
+  struct table_sort_args *a, *aa;
   int n;
   void * ud = NULL;
   lua_Alloc alloc = lua_getallocf(L, &ud);
-  if (lua_icontext(L) > 0) {
+  if (lua_vcontext(L)) {
     s = (struct table_sort_state*)lua_vcontext(L);
     goto resume;
   }
@@ -381,7 +382,12 @@ static int sort (lua_State *L) {
   s->s = s->d = s->i = s->j = 0;
 resume:
   auxsort(L, s, s->args, 1);
-  for (struct table_sort_args* a = s->args, *aa = a; a != NULL; aa = a, a = a->next, alloc(ud, aa, sizeof(struct table_sort_args), 0)) ;
+  a = s->args;
+  while (a) {
+    aa = a;
+    a = a->next;
+    alloc(ud, aa, sizeof(struct table_sort_args), 0);
+  }
   alloc(ud, s, sizeof(struct table_sort_state), 0);
   return 0;
 }
