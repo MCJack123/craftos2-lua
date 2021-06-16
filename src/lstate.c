@@ -59,6 +59,8 @@ static void stack_init (lua_State *L1, lua_State *L) {
   L1->ci->top = L1->top + LUA_MINSTACK;
   L1->ci->errfunc = 0;
   L1->ci->ishook = 0;
+  L1->ci->allowhook = 1;
+  L1->ci->hook_called_mask = 0;
 }
 
 

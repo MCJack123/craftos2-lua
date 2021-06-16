@@ -272,35 +272,38 @@ void luaD_callhook (lua_State *L, int event, int line) {
   lua_Hook hook = L->hook;
   if (hook && (!nohooks(L) || event == LUA_HOOKERROR)) {
     lua_Debug ar;
-    L->ci->hook_top = savestack(L, L->top);
-    L->ci->hook_ci_top = savestack(L, L->ci->top);
+    CallInfo* ci = L->ci;
+    ci->hook_top = savestack(L, L->top);
+    ci->hook_ci_top = savestack(L, ci->top);
     ar.event = event;
     ar.currentline = line;
     if (event == LUA_HOOKTAILRET)
       ar.i_ci = 0;  /* tail call; no debug information about it */
     else
-      ar.i_ci = cast_int(L->ci - L->base_ci);
+      ar.i_ci = cast_int(ci - L->base_ci);
     luaD_checkstack(L, LUA_MINSTACK);  /* ensure minimum stack size */
-    L->ci->top = L->top + LUA_MINSTACK;
-    lua_assert(L->ci->top <= L->stack_last);
-    L->ci->hook_old_nCcalls = L->nCcalls;
-    L->nCcalls = L->ci->hook_old_nCcalls | (event >= LUA_HOOKLINE ?
+    ci->top = L->top + LUA_MINSTACK;
+    lua_assert(ci->top <= L->stack_last);
+    ci->hook_old_nCcalls = L->nCcalls;
+    L->nCcalls = ci->hook_old_nCcalls | (event >= LUA_HOOKLINE ?
                  (LUA_NOVPCALL | LUA_NOHOOKS) : /* line+count hook can yield */
                  (LUA_NOVPCALL | LUA_NOHOOKS | LUA_NOYIELD));
-    L->ci->ishook = 1;
+    ci->ishook = 1;
+    ci->allowhook = 0;
     lua_unlock(L);
     (*hook)(L, &ar);
     lua_lock(L);
     lua_assert(nohooks(L));
-    L->ci->ishook = 0;
-    L->nCcalls = L->ci->hook_old_nCcalls;  /* restore call flags */
-    L->ci->top = restorestack(L, L->ci->hook_ci_top);
-    L->top = restorestack(L, L->ci->hook_top);
     if (L->status == LUA_YIELD) {  /* handle hook yield here, after restore */
       L->base = L->top;  /* protect Lua frame, undo this in f_coresume */
       SAVEPC(L, GETPC(L) - 1);  /* correct pc */
       luaD_throw(L, LUA_YIELD);
     }
+    ci->ishook = 0;
+    ci->allowhook = 1;
+    L->nCcalls = ci->hook_old_nCcalls;  /* restore call flags */
+    ci->top = restorestack(L, ci->hook_ci_top);
+    L->top = restorestack(L, ci->hook_top);
   }
 }
 
@@ -396,6 +399,8 @@ int luaD_precall (lua_State *L, StkId func, int nresults) {
     ci->nresults = cast(short, nresults);
     ci->errfunc = 0;
     ci->ishook = 0;
+    ci->allowhook = !nohooks(L);
+    ci->hook_called_mask = 0;
     for (st = L->top; st < ci->top; st++)
       setnilvalue(st);
     L->top = ci->top;
@@ -423,6 +428,8 @@ int luaD_precall (lua_State *L, StkId func, int nresults) {
     L->ctx = NULL;  /* initial vcontext */
     ci->nresults = cast(short, nresults);
     ci->errfunc = 0;
+    ci->allowhook = !nohooks(L);
+    ci->hook_called_mask = 0;
     if (L->hookmask & LUA_MASKCALL)
       luaD_callhook(L, LUA_HOOKCALL, -1);
     lua_unlock(L);
@@ -477,8 +484,10 @@ int luaD_poscall (lua_State *L, StkId firstResult) {
 ** function position.
 */ 
 void luaD_call (lua_State *L, StkId func, int nresults, int callflags) {
+  lu_byte ishook = L->ci->ishook;
   unsigned short old_nCcalls = L->nCcalls;
   int pcr;
+  if (nohooks(L)) callflags |= LUA_NOHOOKS;
   L->nCcalls = (old_nCcalls + 8) | callflags;
   if (L->nCcalls >= LUAI_MAXCCALLS*8) {
     if (L->nCcalls < (LUAI_MAXCCALLS+1)*8)
@@ -487,7 +496,7 @@ void luaD_call (lua_State *L, StkId func, int nresults, int callflags) {
        luaD_throw(L, LUA_ERRERR);  /* error while handing stack error */
    }
   pcr = luaD_precall(L, func, nresults);
-  if ((pcr == PCRLUA && luaV_execute(L)) || pcr == PCRYIELD)
+  if (((pcr == PCRLUA && luaV_execute(L)) || pcr == PCRYIELD) && !ishook)
     luaD_throw(L, LUA_YIELD);  /* need to break C call boundary */
    luaC_checkGC(L);
   L->nCcalls = old_nCcalls;
@@ -562,7 +571,7 @@ static int resume_error (lua_State *L, const char *msg) {
   lua_assert(cast(StkId, ud) >= L->base);
   old_nCcalls = L->nCcalls;
   for (;;) {
-    L->baseCcalls = (L->nCcalls = (old_nCcalls & ~7) + 8);
+    L->baseCcalls = (L->nCcalls = ((old_nCcalls & ~7) + 8) | (L->ci->allowhook ? 0 : LUA_NOHOOKS));
     status = luaD_rawrunprotected(L, pf, ud);
     if (status <= LUA_YIELD)
       break;

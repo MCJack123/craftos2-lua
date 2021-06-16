@@ -17,8 +17,6 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
-#include "lstate.h"
-
 void (*setcompmask)(lua_State *L, int mask) = NULL;
 
 static int db_getregistry (lua_State *L) {
@@ -235,7 +233,7 @@ static void hookf (lua_State *L, lua_Debug *ar) {
       lua_pushinteger(L, ar->currentline);
     else lua_pushnil(L);
     lua_assert(lua_getinfo(L, "lS", ar));
-    lua_icall(L, 2, 0, (const Instruction*)L->ctx - 1);
+    lua_icall(L, 2, 0, 1);
   }
 }
 

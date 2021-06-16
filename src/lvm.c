@@ -61,18 +61,21 @@ static StkId traceexec (lua_State *L, const Instruction *pc) {
   lu_byte mask = L->hookmask;
   const Instruction *oldpc = GETPC(L);
   SAVEPC(L, pc-1);
-  if ((mask & LUA_MASKCOUNT) && L->hookcount == 0) {
+  if (!(L->ci->hook_called_mask & LUA_MASKCOUNT) && (mask & LUA_MASKCOUNT) && L->hookcount == 0) {
     resethookcount(L);
+    L->ci->hook_called_mask |= LUA_MASKCOUNT;
     luaD_callhook(L, LUA_HOOKCOUNT, -1);
   }
-  if (mask & LUA_MASKLINE) {
+  if (!(L->ci->hook_called_mask & LUA_MASKLINE) && (mask & LUA_MASKLINE)) {
     Proto *p = ci_func(L->ci)->l.p;
     int npc = pcRel(pc, p);
     int newline = getline(p, npc);
     /* call linehook when enter a new function, when jump back (loop),
        or when enter a new line */
-    if (npc == 0 || pc <= oldpc || newline != getline(p, pcRel(oldpc, p)))
+    if (npc == 0 || pc <= oldpc || newline != getline(p, pcRel(oldpc, p))) {
+      L->ci->hook_called_mask |= LUA_MASKLINE;
       luaD_callhook(L, LUA_HOOKLINE, newline);
+    }
   }
   return L->base;
 }
@@ -431,6 +434,7 @@ int luaV_execute (lua_State *L) {
         (--L->hookcount == 0 || L->hookmask & LUA_MASKLINE)) {
       base = traceexec(L, pc);
     }
+    L->ci->hook_called_mask = 0;
     /* warning!! several calls may realloc the stack and invalidate `ra' */
     ra = RA(i);
     lua_assert(base == L->base && L->base == L->ci->base);
@@ -805,6 +809,7 @@ void luaV_resume (lua_State *L) {
   Instruction i;
   if (L->ci->ishook) {
     L->ci->ishook = 0;
+    L->ci->allowhook = 1;
     L->nCcalls = L->ci->hook_old_nCcalls;  /* restore call flags */
     L->ci->top = restorestack(L, L->ci->hook_ci_top);
     L->top = restorestack(L, L->ci->hook_top);

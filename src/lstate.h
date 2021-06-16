@@ -58,6 +58,8 @@ typedef struct CallInfo {
   ptrdiff_t hook_top;
   ptrdiff_t hook_ci_top;
   unsigned short hook_old_nCcalls;
+  lu_byte allowhook;
+  lu_byte hook_called_mask;
 } CallInfo;
 
 

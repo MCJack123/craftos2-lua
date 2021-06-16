@@ -825,7 +825,8 @@ LUA_API void lua_vcall (lua_State *L, int nargs, int nresults, void *ctx) {
     flags = LUA_NOYIELD | LUA_NOVPCALL;
   else {
     //lua_assert(iscfunction(L->ci->func));
-    L->ctx = ctx;
+    if (L->ci->ishook) L->ctx = (Instruction*)L->ctx - 1;
+    else L->ctx = ctx;
     flags = 0;
   }
   luaD_call(L, L->top - (nargs+1), nresults, flags);
