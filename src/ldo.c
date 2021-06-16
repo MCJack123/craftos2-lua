@@ -484,7 +484,7 @@ int luaD_poscall (lua_State *L, StkId firstResult) {
 ** function position.
 */ 
 void luaD_call (lua_State *L, StkId func, int nresults, int callflags) {
-  lu_byte ishook = L->ci->ishook;
+  lu_byte ishook = ttisfunction(L->ci->func) && f_isLua(L->ci) && L->ci->ishook;
   unsigned short old_nCcalls = L->nCcalls;
   int pcr;
   if (nohooks(L)) callflags |= LUA_NOHOOKS;
@@ -571,7 +571,8 @@ static int resume_error (lua_State *L, const char *msg) {
   lua_assert(cast(StkId, ud) >= L->base);
   old_nCcalls = L->nCcalls;
   for (;;) {
-    L->baseCcalls = (L->nCcalls = ((old_nCcalls & ~7) + 8) | (L->ci->allowhook ? 0 : LUA_NOHOOKS));
+    L->baseCcalls = (L->nCcalls = (old_nCcalls & ~7) + 8);
+    if (!L->ci->allowhook) L->nCcalls |= LUA_NOHOOKS;
     status = luaD_rawrunprotected(L, pf, ud);
     if (status <= LUA_YIELD)
       break;
