@@ -123,46 +123,35 @@ TRope *luaS_concat (lua_State *L, TRope *l, TRope *r) {
 TString *luaS_build (lua_State *L, TRope *rope) {
   char *buffer, *cur;
   TString *s;
+  TRope **stack, **base;
+  size_t stacksize = 8;
   if (rope->tsr.tt == LUA_TSTRING) return cast(TString *, rope);
   buffer = cur = luaZ_openspace(L, &G(L)->buff, rope->tsr.len);
-  /* Morris Traversal algorithm to avoid stack overflow on large ropes */
-  /* Slightly modified since string nodes cannot store children; */
-  /* instead we put the inorder predecessor on the parent node and */
-  /* traverse one node behind */
-  while (rope) {
-    if (rope->tsr.left->tsr.tt == LUA_TSTRING) {
-      memcpy(cur, getstr(cast(TString *, rope->tsr.left)), cast(TString *, rope->tsr.left)->tsv.len);
-      cur += cast(TString *, rope->tsr.left)->tsv.len;
-      if (rope->tsr.right->tsr.tt == LUA_TSTRING) {
-        memcpy(cur, getstr(cast(TString *, rope->tsr.right)), cast(TString *, rope->tsr.right)->tsv.len);
-        cur += cast(TString *, rope->tsr.right)->tsv.len;
-        rope = rope->tsr.parent;
-      } else rope = rope->tsr.right;
-    } else {
-      TRope *pred = rope->tsr.left;
-      while (pred->tsr.right->tsr.tt != LUA_TSTRING && pred->tsr.parent != rope)
-        pred = pred->tsr.right;
-      if (pred->tsr.parent == rope) {
-        pred->tsr.parent = NULL;
-        if (rope->tsr.right->tsr.tt == LUA_TSTRING) {
-          memcpy(cur, getstr(cast(TString *, rope->tsr.right)), cast(TString *, rope->tsr.right)->tsv.len);
-          cur += cast(TString *, rope->tsr.right)->tsv.len;
-          rope = rope->tsr.parent;
-        } else rope = rope->tsr.right;
-      } else {
-        pred->tsr.parent = rope;
-        if (rope->tsr.left->tsr.tt == LUA_TSTRING) {
-          memcpy(cur, getstr(cast(TString *, rope->tsr.left)), cast(TString *, rope->tsr.left)->tsv.len);
-          cur += cast(TString *, rope->tsr.left)->tsv.len;
-          if (rope->tsr.right->tsr.tt == LUA_TSTRING) {
-            memcpy(cur, getstr(cast(TString *, rope->tsr.right)), cast(TString *, rope->tsr.right)->tsv.len);
-            cur += cast(TString *, rope->tsr.right)->tsv.len;
-            rope = rope->tsr.parent;
-          } else rope = rope->tsr.right;
-        } else rope = rope->tsr.left;
+  base = stack = luaM_newvector(L, stacksize, TRope *);
+  do {
+    int b = 0;
+    while (rope->tsr.left->tsr.tt == LUA_TROPE) {
+      if (stack - base == stacksize - 1) {
+        TRope **oldbase = base;
+        luaM_reallocvector(L, base, stacksize, stacksize + stacksize, TRope *);
+        stack = base + (stack - oldbase);
+        stacksize += stacksize;
       }
+      *stack++ = rope;
+      rope = rope->tsr.left;
     }
-  }
+    memcpy(cur, getstr(cast(TString *, rope->tsr.left)), cast(TString *, rope->tsr.left)->tsv.len);
+    cur += cast(TString *, rope->tsr.left)->tsv.len;
+    while (rope->tsr.right->tsr.tt == LUA_TSTRING) {
+      memcpy(cur, getstr(cast(TString *, rope->tsr.right)), cast(TString *, rope->tsr.right)->tsv.len);
+      cur += cast(TString *, rope->tsr.right)->tsv.len;
+      if (stack <= base) {b = 1; break;}
+      rope = *--stack;
+    }
+    if (b) break;
+    rope = rope->tsr.right;
+  } while (stack >= base);
+  luaM_freearray(L, base, stacksize, TRope *);
   s = luaS_newlstr(L, buffer, cur - buffer);
   return s;
 }

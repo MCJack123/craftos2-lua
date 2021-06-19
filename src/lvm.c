@@ -119,6 +119,7 @@ static void callTM (lua_State *L, const TValue *f, const TValue *p1,
 
 void luaV_gettable (lua_State *L, const TValue *t, TValue *key, StkId val) {
   int loop;
+  resolverope(L, key);
   for (loop = 0; loop < MAXTAGLOOP; loop++) {
     const TValue *tm;
     if (ttistable(t)) {  /* `t' is a table? */
@@ -146,6 +147,7 @@ void luaV_gettable (lua_State *L, const TValue *t, TValue *key, StkId val) {
 void luaV_settable (lua_State *L, const TValue *t, TValue *key, StkId val) {
   int loop;
   TValue temp;
+  resolverope(L, key);
   for (loop = 0; loop < MAXTAGLOOP; loop++) {
     const TValue *tm;
     if (ttistable(t)) {  /* `t' is a table? */
@@ -236,6 +238,8 @@ static int l_strcmp (const TString *ls, const TString *rs) {
 
 int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
   int res;
+  resolverope(L, l);
+  resolverope(L, r);
   if (ttype(l) != ttype(r))
     return luaG_ordererror(L, l, r);
   else if (ttisnumber(l))
@@ -250,6 +254,8 @@ int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
 
 static int lessequal (lua_State *L, const TValue *l, const TValue *r) {
   int res;
+  resolverope(L, l);
+  resolverope(L, r);
   if (ttype(l) != ttype(r))
     return luaG_ordererror(L, l, r);
   else if (ttisnumber(l))
@@ -266,6 +272,8 @@ static int lessequal (lua_State *L, const TValue *l, const TValue *r) {
 
 int luaV_equalval (lua_State *L, const TValue *t1, const TValue *t2) {
   const TValue *tm;
+  resolverope(L, t1);
+  resolverope(L, t2);
   lua_assert(ttype(t1) == ttype(t2));
   switch (ttype(t1)) {
     case LUA_TNIL: return 1;
@@ -608,8 +616,6 @@ int luaV_execute (lua_State *L) {
         continue;
       }
       case OP_LT: {
-        resolverope(L, RKB(i));
-        resolverope(L, RKC(i));
         Protect(
           if (luaV_lessthan(L, RKB(i), RKC(i)) == GETARG_A(i))
             dojump(L, pc, GETARG_sBx(*pc));
@@ -618,8 +624,6 @@ int luaV_execute (lua_State *L) {
         continue;
       }
       case OP_LE: {
-        resolverope(L, RKB(i));
-        resolverope(L, RKC(i));
         Protect(
           if (lessequal(L, RKB(i), RKC(i)) == GETARG_A(i))
             dojump(L, pc, GETARG_sBx(*pc));
