@@ -35,12 +35,12 @@ static int luaB_print (lua_State *L) {
     n -= 2;  /* compensate for tostring function and result */
     goto resume;
   }
+  lua_getglobal(L, "tostring");
   for (i=1; i<=n; i++) {
     const char *s;
     lua_pushvalue(L, -1);  /* function to be called */
     lua_pushvalue(L, i);   /* value to print */
     lua_icall(L, 1, 1, i);
-    
 resume:
     s = lua_tostring(L, -1);  /* get result */
     if (s == NULL)

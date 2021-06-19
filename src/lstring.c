@@ -157,10 +157,6 @@ TString *luaS_build (lua_State *L, TRope *rope) {
 }
 
 void luaS_freerope (lua_State *L, TRope *rope) {
-  if (rope->tsr.tt == LUA_TSTRING) {
-    resetbit(cast(TString *, rope)->tsv.marked, FIXEDBIT);  /* let the GC handle the string value next cycle */
-  } else {
-    luaM_free(L, rope);
-  }
+  luaM_free(L, rope);
 }
 

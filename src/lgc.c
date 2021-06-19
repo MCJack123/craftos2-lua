@@ -180,11 +180,9 @@ static int traversetable (global_State *g, Table *h) {
     }
   }
   if (weakkey && weakvalue) return 1;
-  if (!weakvalue) {
-    i = h->sizearray;
-    while (i--)
-      markvalue(g, &h->array[i]);
-  }
+  i = h->sizearray;
+  while (i--)
+    if (!weakvalue || ttisrope(&h->array[i])) markvalue(g, &h->array[i]);
   i = sizenode(h);
   while (i--) {
     Node *n = gnode(h, i);
@@ -193,8 +191,8 @@ static int traversetable (global_State *g, Table *h) {
       removeentry(n);  /* remove empty entries */
     else {
       lua_assert(!ttisnil(gkey(n)));
-      if (!weakkey) markvalue(g, gkey(n));
-      if (!weakvalue) markvalue(g, gval(n));
+      if (!weakkey || ttisrope(gkey(n))) markvalue(g, gkey(n));
+      if (!weakvalue || ttisrope(gval(n))) markvalue(g, gval(n));
     }
   }
   return weakkey || weakvalue;
@@ -352,10 +350,13 @@ static size_t propagateall (global_State *g) {
 ** other objects: if really collected, cannot keep them; for userdata
 ** being finalized, keep them in keys, but not in values
 */
-static int iscleared (const TValue *o, int iskey) {
+static int iscleared (global_State *g, const TValue *o, int iskey) {
   if (!iscollectable(o)) return 0;
   if (ttisstring(o)) {
     stringmark(rawtsvalue(o));  /* strings are `values', so are never weak */
+    return 0;
+  } else if (ttisrope(o)) {
+    markobject(g, o);  /* ropes are strings -> which are values, so are never weak either */
     return 0;
   }
   return iswhite(gcvalue(o)) ||
@@ -366,7 +367,7 @@ static int iscleared (const TValue *o, int iskey) {
 /*
 ** clear collected entries from weaktables
 */
-static void cleartable (GCObject *l) {
+static void cleartable (global_State *g, GCObject *l) {
   while (l) {
     Table *h = gco2h(l);
     int i = h->sizearray;
@@ -375,7 +376,7 @@ static void cleartable (GCObject *l) {
     if (testbit(h->marked, VALUEWEAKBIT)) {
       while (i--) {
         TValue *o = &h->array[i];
-        if (iscleared(o, 0))  /* value was collected? */
+        if (iscleared(g, o, 0))  /* value was collected? */
           setnilvalue(o);  /* remove value */
       }
     }
@@ -383,7 +384,7 @@ static void cleartable (GCObject *l) {
     while (i--) {
       Node *n = gnode(h, i);
       if (!ttisnil(gval(n)) &&  /* non-empty entry? */
-          (iscleared(key2tval(n), 1) || iscleared(gval(n), 0))) {
+          (iscleared(g, key2tval(n), 1) || iscleared(g, gval(n), 0))) {
         setnilvalue(gval(n));  /* remove value ... */
         removeentry(n);  /* remove entry from table */
       }
@@ -559,7 +560,7 @@ static void atomic (lua_State *L) {
   udsize = luaC_separateudata(L, 0);  /* separate userdata to be finalized */
   marktmu(g);  /* mark `preserved' userdata */
   udsize += propagateall(g);  /* remark, to propagate `preserveness' */
-  cleartable(g->weak);  /* remove collected objects from weak tables */
+  cleartable(g, g->weak);  /* remove collected objects from weak tables */
   /* flip current white */
   g->currentwhite = cast_byte(otherwhite(g));
   g->sweepstrgc = 0;
