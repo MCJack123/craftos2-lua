@@ -350,9 +350,6 @@ LUA_API int lua_toboolean (lua_State *L, int idx) {
 
 LUA_API const char *lua_tolstring (lua_State *L, int idx, size_t *len) {
   StkId o = index2adr(L, idx);
-  if (ttisrope(o)) {
-    setsvalue(L, o, luaS_build(L, rawtrvalue(o)));
-  }
   if (!ttisstring(o)) {
     lua_lock(L);  /* `luaV_tostring' may create a new string */
     if (!luaV_tostring(L, o)) {  /* conversion failed? */
@@ -639,6 +636,9 @@ LUA_API int lua_getmetatable (lua_State *L, int objindex) {
       break;
     case LUA_TUSERDATA:
       mt = uvalue(obj)->metatable;
+      break;
+    case LUA_TROPE:
+      mt = G(L)->mt[LUA_TSTRING];
       break;
     case LUA_TNONE: break;  /* safety net */
     default:

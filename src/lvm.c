@@ -32,10 +32,13 @@
 #define MAXTAGLOOP	100
 
 
+#define resolverope(L, o) {if (ttisrope(o)) setsvalue(L, o, luaS_build(L, rawtrvalue(o)));}
+
+
 const TValue *luaV_tonumber (lua_State *L, const TValue *obj, TValue *n) {
   lua_Number num;
   if (ttisnumber(obj)) return obj;
-  if (ttisrope(obj)) setsvalue(L, obj, luaS_build(L, rawtrvalue(obj)));
+  resolverope(L, obj);
   if (ttisstring(obj) && luaO_str2d(svalue(obj), &num)) {
     setnvalue(n, num);
     return n;
@@ -47,7 +50,7 @@ const TValue *luaV_tonumber (lua_State *L, const TValue *obj, TValue *n) {
 
 int luaV_tostring (lua_State *L, StkId obj) {
   if (ttisrope(obj)) {
-    setsvalue(L, obj, luaS_build(L, rawtrvalue(obj)));
+    resolverope(L, obj);
     return 1;
   }
   else if (!ttisnumber(obj))
@@ -595,6 +598,8 @@ int luaV_execute (lua_State *L) {
       case OP_EQ: {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
+        resolverope(L, rb);
+        resolverope(L, rc);
         Protect(
           if (equalobj(L, rb, rc) == GETARG_A(i))
             dojump(L, pc, GETARG_sBx(*pc));
@@ -603,6 +608,8 @@ int luaV_execute (lua_State *L) {
         continue;
       }
       case OP_LT: {
+        resolverope(L, RKB(i));
+        resolverope(L, RKC(i));
         Protect(
           if (luaV_lessthan(L, RKB(i), RKC(i)) == GETARG_A(i))
             dojump(L, pc, GETARG_sBx(*pc));
@@ -611,6 +618,8 @@ int luaV_execute (lua_State *L) {
         continue;
       }
       case OP_LE: {
+        resolverope(L, RKB(i));
+        resolverope(L, RKC(i));
         Protect(
           if (lessequal(L, RKB(i), RKC(i)) == GETARG_A(i))
             dojump(L, pc, GETARG_sBx(*pc));
