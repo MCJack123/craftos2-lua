@@ -32,6 +32,7 @@
 #include "lmem.h"
 #include "lobject.h"
 #include "lstate.h"
+#include "lstring.h"
 #include "ltable.h"
 
 
@@ -466,10 +467,11 @@ const TValue *luaH_getstr (Table *t, TString *key) {
 /*
 ** main search function
 */
-const TValue *luaH_get (Table *t, const TValue *key) {
+const TValue *luaH_get (lua_State *L, Table *t, const TValue *key) {
   switch (ttype(key)) {
     case LUA_TNIL: return luaO_nilobject;
     case LUA_TSTRING: return luaH_getstr(t, rawtsvalue(key));
+    case LUA_TROPE: return luaH_getstr(t, luaS_build(L, rawtrvalue(key)));
     case LUA_TNUMBER: {
       int k;
       lua_Number n = nvalue(key);
@@ -492,7 +494,7 @@ const TValue *luaH_get (Table *t, const TValue *key) {
 
 
 TValue *luaH_set (lua_State *L, Table *t, const TValue *key) {
-  const TValue *p = luaH_get(t, key);
+  const TValue *p = luaH_get(L, t, key);
   t->flags = 0;
   if (p != luaO_nilobject)
     return cast(TValue *, p);

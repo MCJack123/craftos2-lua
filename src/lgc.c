@@ -107,6 +107,11 @@ static void reallymarkobject (global_State *g, GCObject *o) {
       g->gray = o;
       break;
     }
+    case LUA_TROPE: {
+      gco2tr(o)->gclist = g->gray;
+      g->gray = o;
+      break;
+    }
     default: lua_assert(0);
   }
 }
@@ -270,6 +275,14 @@ static void traversestack (global_State *g, lua_State *l) {
 }
 
 
+static l_mem traverserope (global_State *g, TRope *r) {
+  l_mem size = sizeof(TRope);
+  if (r->tsr.left) markobject(g, r->tsr.left);
+  if (r->tsr.right) markobject(g, r->tsr.right);
+  return size + sizeof(TRope*) * 2;
+}
+
+
 /*
 ** traverse one gray object, turning it to black.
 ** Returns `quantity' traversed.
@@ -314,6 +327,11 @@ static l_mem propagatemark (global_State *g) {
                              sizeof(int) * p->sizelineinfo +
                              sizeof(LocVar) * p->sizelocvars +
                              sizeof(TString *) * p->sizeupvalues;
+    }
+    case LUA_TROPE: {
+      TRope *r = rawgco2tr(o);
+      g->gray = r->tsr.gclist;
+      return traverserope(g, r);
     }
     default: lua_assert(0); return 0;
   }
@@ -380,6 +398,7 @@ static void freeobj (lua_State *L, GCObject *o) {
     case LUA_TPROTO: luaF_freeproto(L, gco2p(o)); break;
     case LUA_TFUNCTION: luaF_freeclosure(L, gco2cl(o)); break;
     case LUA_TUPVAL: luaF_freeupval(L, gco2uv(o)); break;
+    case LUA_TROPE: luaS_freerope(L, rawgco2tr(o)); break;
     case LUA_TTABLE: luaH_free(L, gco2h(o)); break;
     case LUA_TTHREAD: {
       lua_assert(gco2th(o) != L && gco2th(o) != G(L)->mainthread);

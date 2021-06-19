@@ -14,6 +14,7 @@
 
 #include "lobject.h"
 #include "lstate.h"
+#include "lstring.h"
 #include "lundump.h"
 
 typedef struct {
@@ -99,6 +100,9 @@ static void DumpConstants(const Proto* f, DumpState* D)
    case LUA_TSTRING:
 	DumpString(rawtsvalue(o),D);
 	break;
+   case LUA_TROPE:
+   DumpString(luaS_build(D->L, rawtrvalue(o)), D);
+   break;
    default:
 	lua_assert(0);			/* cannot happen */
 	break;

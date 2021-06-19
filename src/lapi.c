@@ -245,7 +245,7 @@ LUA_API void lua_pushvalue (lua_State *L, int idx) {
 
 LUA_API int lua_type (lua_State *L, int idx) {
   StkId o = index2adr(L, idx);
-  return (o == luaO_nilobject) ? LUA_TNONE : ttype(o);
+  return (o == luaO_nilobject) ? LUA_TNONE : (ttisrope(o) ? LUA_TSTRING : ttype(o));
 }
 
 
@@ -264,13 +264,13 @@ LUA_API int lua_iscfunction (lua_State *L, int idx) {
 LUA_API int lua_isnumber (lua_State *L, int idx) {
   TValue n;
   const TValue *o = index2adr(L, idx);
-  return tonumber(o, &n);
+  return tonumber(L, o, &n);
 }
 
 
 LUA_API int lua_isstring (lua_State *L, int idx) {
   int t = lua_type(L, idx);
-  return (t == LUA_TSTRING || t == LUA_TNUMBER);
+  return (t == LUA_TSTRING || t == LUA_TNUMBER || t == LUA_TROPE);
 }
 
 
@@ -321,7 +321,7 @@ LUA_API int lua_lessthan (lua_State *L, int index1, int index2) {
 LUA_API lua_Number lua_tonumber (lua_State *L, int idx) {
   TValue n;
   const TValue *o = index2adr(L, idx);
-  if (tonumber(o, &n))
+  if (tonumber(L, o, &n))
     return nvalue(o);
   else
     return 0;
@@ -331,7 +331,7 @@ LUA_API lua_Number lua_tonumber (lua_State *L, int idx) {
 LUA_API lua_Integer lua_tointeger (lua_State *L, int idx) {
   TValue n;
   const TValue *o = index2adr(L, idx);
-  if (tonumber(o, &n)) {
+  if (tonumber(L, o, &n)) {
     lua_Integer res;
     lua_Number num = nvalue(o);
     lua_number2integer(res, num);
@@ -350,6 +350,9 @@ LUA_API int lua_toboolean (lua_State *L, int idx) {
 
 LUA_API const char *lua_tolstring (lua_State *L, int idx, size_t *len) {
   StkId o = index2adr(L, idx);
+  if (ttisrope(o)) {
+    setsvalue(L, o, luaS_build(L, rawtrvalue(o)));
+  }
   if (!ttisstring(o)) {
     lua_lock(L);  /* `luaV_tostring' may create a new string */
     if (!luaV_tostring(L, o)) {  /* conversion failed? */
@@ -370,6 +373,7 @@ LUA_API size_t lua_objlen (lua_State *L, int idx) {
   StkId o = index2adr(L, idx);
   switch (ttype(o)) {
     case LUA_TSTRING: return tsvalue(o)->len;
+    case LUA_TROPE: return trvalue(o)->len;
     case LUA_TUSERDATA: return uvalue(o)->len;
     case LUA_TTABLE: return luaH_getn(hvalue(o));
     case LUA_TNUMBER: {
@@ -387,6 +391,7 @@ LUA_API size_t lua_totalobjlen (lua_State *L, int idx) {
   StkId o = index2adr(L, idx);
   switch (ttype(o)) {
     case LUA_TSTRING: return tsvalue(o)->len;
+    case LUA_TROPE: return trvalue(o)->len;
     case LUA_TUSERDATA: return uvalue(o)->len;
     case LUA_TTABLE: {
       Table* t = hvalue(o);
@@ -597,7 +602,7 @@ LUA_API void lua_rawget (lua_State *L, int idx) {
   lua_lock(L);
   t = index2adr(L, idx);
   api_check(L, ttistable(t));
-  setobj2s(L, L->top - 1, luaH_get(hvalue(t), L->top - 1));
+  setobj2s(L, L->top - 1, luaH_get(L, hvalue(t), L->top - 1));
   lua_unlock(L);
 }
 

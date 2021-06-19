@@ -154,6 +154,7 @@ union GCObject {
   struct Proto p;
   struct UpVal uv;
   struct lua_State th;  /* thread */
+  union TRope r;
 };
 
 
@@ -169,6 +170,8 @@ union GCObject {
 #define ngcotouv(o) \
 	check_exp((o) == NULL || (o)->gch.tt == LUA_TUPVAL, &((o)->uv))
 #define gco2th(o)	check_exp((o)->gch.tt == LUA_TTHREAD, &((o)->th))
+#define rawgco2tr(o)	check_exp((o)->gch.tt == LUA_TROPE, &((o)->r))
+#define gco2tr(o)	(&rawgco2tr(o)->tsr)
 
 /* macro to convert any Lua object into a GCObject */
 #define obj2gco(v)	(cast(GCObject *, (v)))

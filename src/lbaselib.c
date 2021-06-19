@@ -222,8 +222,23 @@ static int luaB_collectgarbage (lua_State *L) {
 
 
 static int luaB_type (lua_State *L) {
+  int t;
   luaL_checkany(L, 1);
-  lua_pushstring(L, luaL_typename(L, 1));
+  t = lua_type(L, 1);
+  lua_getfield(L, LUA_REGISTRYINDEX, "_type_names");
+  if (lua_isnil(L, -1)) {
+    lua_pop(L, 1);
+    lua_newtable(L);
+    lua_pushvalue(L, -1);
+    lua_setfield(L, LUA_REGISTRYINDEX, "_type_names");
+  }
+  lua_rawgeti(L, -1, t);
+  if (lua_isnil(L, -1)) {
+    lua_pop(L, 1);
+    lua_pushstring(L, lua_typename(L, t));
+    lua_pushvalue(L, -1);
+    lua_rawseti(L, -3, t);
+  }
   return 1;
 }
 

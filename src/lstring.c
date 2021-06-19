@@ -109,3 +109,69 @@ Udata *luaS_newudata (lua_State *L, size_t s, Table *e) {
   return u;
 }
 
+TRope *luaS_concat (lua_State *L, TRope *l, TRope *r) {
+  TRope *rope;
+  rope = cast(TRope *, luaM_malloc(L, sizeof(TRope)));
+  luaC_link(L, obj2gco(rope), LUA_TROPE);
+  rope->tsr.left = l;
+  rope->tsr.right = r;
+  rope->tsr.parent = NULL;
+  rope->tsr.len = (l->tsr.tt == LUA_TSTRING ? cast(TString *, l)->tsv.len : l->tsr.len) + (r->tsr.tt == LUA_TSTRING ? cast(TString *, r)->tsv.len : r->tsr.len);
+  return rope;
+}
+
+TString *luaS_build (lua_State *L, TRope *rope) {
+  char *buffer, *cur;
+  TString *s;
+  if (rope->tsr.tt == LUA_TSTRING) return cast(TString *, rope);
+  buffer = cur = luaZ_openspace(L, &G(L)->buff, rope->tsr.len);
+  /* Morris Traversal algorithm to avoid stack overflow on large ropes */
+  /* Slightly modified since string nodes cannot store children; */
+  /* instead we put the inorder predecessor on the parent node and */
+  /* traverse one node behind */
+  while (rope) {
+    if (rope->tsr.left->tsr.tt == LUA_TSTRING) {
+      memcpy(cur, getstr(cast(TString *, rope->tsr.left)), cast(TString *, rope->tsr.left)->tsv.len);
+      cur += cast(TString *, rope->tsr.left)->tsv.len;
+      if (rope->tsr.right->tsr.tt == LUA_TSTRING) {
+        memcpy(cur, getstr(cast(TString *, rope->tsr.right)), cast(TString *, rope->tsr.right)->tsv.len);
+        cur += cast(TString *, rope->tsr.right)->tsv.len;
+        rope = rope->tsr.parent;
+      } else rope = rope->tsr.right;
+    } else {
+      TRope *pred = rope->tsr.left;
+      while (pred->tsr.right->tsr.tt != LUA_TSTRING && pred->tsr.parent != rope)
+        pred = pred->tsr.right;
+      if (pred->tsr.parent == rope) {
+        pred->tsr.parent = NULL;
+        if (rope->tsr.right->tsr.tt == LUA_TSTRING) {
+          memcpy(cur, getstr(cast(TString *, rope->tsr.right)), cast(TString *, rope->tsr.right)->tsv.len);
+          cur += cast(TString *, rope->tsr.right)->tsv.len;
+          rope = rope->tsr.parent;
+        } else rope = rope->tsr.right;
+      } else {
+        pred->tsr.parent = rope;
+        if (rope->tsr.left->tsr.tt == LUA_TSTRING) {
+          memcpy(cur, getstr(cast(TString *, rope->tsr.left)), cast(TString *, rope->tsr.left)->tsv.len);
+          cur += cast(TString *, rope->tsr.left)->tsv.len;
+          if (rope->tsr.right->tsr.tt == LUA_TSTRING) {
+            memcpy(cur, getstr(cast(TString *, rope->tsr.right)), cast(TString *, rope->tsr.right)->tsv.len);
+            cur += cast(TString *, rope->tsr.right)->tsv.len;
+            rope = rope->tsr.parent;
+          } else rope = rope->tsr.right;
+        } else rope = rope->tsr.left;
+      }
+    }
+  }
+  s = luaS_newlstr(L, buffer, cur - buffer);
+  return s;
+}
+
+void luaS_freerope (lua_State *L, TRope *rope) {
+  if (rope->tsr.tt == LUA_TSTRING) {
+    resetbit(cast(TString *, rope)->tsv.marked, FIXEDBIT);  /* let the GC handle the string value next cycle */
+  } else {
+    luaM_free(L, rope);
+  }
+}
+
