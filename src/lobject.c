@@ -191,6 +191,7 @@ const char *luaO_pushvfstring (lua_State *L, const char *fmt, va_list argp) {
   pushstr(L, fmt, 0);
   luaV_concat(L, n+1, cast_int(L->top - L->base) - 1);
   L->top -= n;
+  if (ttisrope(L->top - 1)) setsvalue(L, L->top - 1, luaS_build(L, rawtrvalue(L->top - 1)));
   return svalue(L->top - 1);
 }
 
