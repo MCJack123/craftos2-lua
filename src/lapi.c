@@ -350,8 +350,10 @@ LUA_API int lua_toboolean (lua_State *L, int idx) {
 
 LUA_API const char *lua_tolstring (lua_State *L, int idx, size_t *len) {
   StkId o = index2adr(L, idx);
-  if (ttissubstr(o)) {
-    if (len != NULL) *len = ssvalue(o)->len;
+  if (ttissubstr(o) && len != NULL) {
+    /* if using lua_tostring, we need to convert to normal string so the cstring ends with \0 */
+    /* otherwise, we can keep the substring intact */
+    *len = ssvalue(o)->len;
     return getstr(ssvalue(o)->str) + ssvalue(o)->offset;
   }
   if (!ttisstring(o)) {
