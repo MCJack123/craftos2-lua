@@ -155,6 +155,7 @@ union GCObject {
   struct UpVal uv;
   struct lua_State th;  /* thread */
   union TRope r;
+  union TSubString ss;
 };
 
 
@@ -172,6 +173,8 @@ union GCObject {
 #define gco2th(o)	check_exp((o)->gch.tt == LUA_TTHREAD, &((o)->th))
 #define rawgco2tr(o)	check_exp((o)->gch.tt == LUA_TROPE, &((o)->r))
 #define gco2tr(o)	(&rawgco2tr(o)->tsr)
+#define rawgco2ss(o)	check_exp((o)->gch.tt == LUA_TSUBSTR, &((o)->ss))
+#define gco2ss(o)	(&rawgco2tr(o)->tss)
 
 /* macro to convert any Lua object into a GCObject */
 #define obj2gco(v)	(cast(GCObject *, (v)))

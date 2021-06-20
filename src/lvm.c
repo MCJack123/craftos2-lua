@@ -33,12 +33,14 @@
 
 
 #define resolverope(L, o) {if (ttisrope(o)) setsvalue(L, o, luaS_build(L, rawtrvalue(o)));}
+#define resolvesubstr(L, o) {if (ttissubstr(o)) setsvalue(L, o, luaS_newlstr(L, getstr(ssvalue(o)->str) + ssvalue(o)->offset, ssvalue(o)->len));}
 
 
 const TValue *luaV_tonumber (lua_State *L, const TValue *obj, TValue *n) {
   lua_Number num;
   if (ttisnumber(obj)) return obj;
   resolverope(L, obj);
+  resolvesubstr(L, obj);
   if (ttisstring(obj) && luaO_str2d(svalue(obj), &num)) {
     setnvalue(n, num);
     return n;
@@ -49,8 +51,9 @@ const TValue *luaV_tonumber (lua_State *L, const TValue *obj, TValue *n) {
 
 
 int luaV_tostring (lua_State *L, StkId obj) {
-  if (ttisrope(obj)) {
+  if (ttisrope(obj) || ttissubstr(obj)) {
     resolverope(L, obj);
+    resolvesubstr(L, obj);
     return 1;
   }
   else if (!ttisnumber(obj))
@@ -120,6 +123,7 @@ static void callTM (lua_State *L, const TValue *f, const TValue *p1,
 void luaV_gettable (lua_State *L, const TValue *t, TValue *key, StkId val) {
   int loop;
   resolverope(L, key);
+  resolvesubstr(L, key);
   for (loop = 0; loop < MAXTAGLOOP; loop++) {
     const TValue *tm;
     if (ttistable(t)) {  /* `t' is a table? */
@@ -148,6 +152,7 @@ void luaV_settable (lua_State *L, const TValue *t, TValue *key, StkId val) {
   int loop;
   TValue temp;
   resolverope(L, key);
+  resolvesubstr(L, key);
   for (loop = 0; loop < MAXTAGLOOP; loop++) {
     const TValue *tm;
     if (ttistable(t)) {  /* `t' is a table? */
@@ -255,7 +260,9 @@ int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
 static int lessequal (lua_State *L, const TValue *l, const TValue *r) {
   int res;
   resolverope(L, l);
+  resolvesubstr(L, l);
   resolverope(L, r);
+  resolvesubstr(L, r);
   if (ttype(l) != ttype(r))
     return luaG_ordererror(L, l, r);
   else if (ttisnumber(l))
@@ -273,7 +280,9 @@ static int lessequal (lua_State *L, const TValue *l, const TValue *r) {
 int luaV_equalval (lua_State *L, const TValue *t1, const TValue *t2) {
   const TValue *tm;
   resolverope(L, t1);
+  resolvesubstr(L, t1);
   resolverope(L, t2);
+  resolvesubstr(L, t2);
   lua_assert(ttype(t1) == ttype(t2));
   switch (ttype(t1)) {
     case LUA_TNIL: return 1;
@@ -313,20 +322,20 @@ void luaV_concat (lua_State *L, int total, int last) {
   do {
     StkId top = L->base + last + 1;
     int n = 2;  /* number of elements handled in this pass (at least 2) */
-    if (!(ttisstring(top-2) || ttisnumber(top-2) || ttisrope(top-2)) || !tostring(L, top-1)) {
+    if (!(ttisstring(top-2) || ttisnumber(top-2) || ttisrope(top-2) || ttissubstr(top-2)) || !tostring(L, top-1)) {
       setpvalue(L->top, (void *)(ptrdiff_t)(last - 1));  /* for luaV_resume */
       L->top++;
       if (!call_binTM(L, top-2, top-1, top-2, TM_CONCAT))
         luaG_concaterror(L, top-2, top-1);
       L->top--;
-    } else if (tsvalue(top-1)->len == 0)  /* second op is empty? */
+    } else if ((ttisrope(top-1) ? trvalue(top-1)->len : (ttissubstr(top-1) ? ssvalue(top-1)->len : tsvalue(top-1)->len)) == 0)  /* second op is empty? */
       (void)tostring(L, top - 2);  /* result is first op (as string) */
     else {
       /* concatenate by creating a rope */
       size_t tl = tsvalue(top-1)->len;
       /* collect total length */
-      for (n = 1; n < total && (ttisrope(top-n-1) || tostring(L, top-n-1)); n++) {
-        size_t l = ttisrope(top-n-1) ? trvalue(top-n-1)->len : tsvalue(top-n-1)->len;
+      for (n = 1; n < total && (ttisrope(top-n-1) || ttissubstr(top-n-1) || tostring(L, top-n-1)); n++) {
+        size_t l = ttisrope(top-n-1) ? trvalue(top-n-1)->len : (ttissubstr(top-n-1) ? ssvalue(top-n-1)->len : tsvalue(top-n-1)->len);
         if (l >= MAX_SIZET - tl) luaG_runerror(L, "string length overflow");
         tl += l;
       }
@@ -583,6 +592,10 @@ int luaV_execute (lua_State *L) {
             setnvalue(ra, cast_num(trvalue(rb)->len));
             break;
           }
+          case LUA_TSUBSTR: {
+            setnvalue(ra, cast_num(ssvalue(rb)->len));
+            break;
+          }
           default: {  /* try metamethod */
             Protect(
               if (!call_binTM(L, rb, luaO_nilobject, ra, TM_LEN))
@@ -607,7 +620,9 @@ int luaV_execute (lua_State *L) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         resolverope(L, rb);
+        resolvesubstr(L, rb);
         resolverope(L, rc);
+        resolvesubstr(L, rc);
         Protect(
           if (equalobj(L, rb, rc) == GETARG_A(i))
             dojump(L, pc, GETARG_sBx(*pc));

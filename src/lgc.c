@@ -112,6 +112,11 @@ static void reallymarkobject (global_State *g, GCObject *o) {
       g->gray = o;
       break;
     }
+    case LUA_TSUBSTR: {
+      gco2tr(o)->gclist = g->gray;
+      g->gray = o;
+      break;
+    }
     default: lua_assert(0);
   }
 }
@@ -182,7 +187,7 @@ static int traversetable (global_State *g, Table *h) {
   if (weakkey && weakvalue) return 1;
   i = h->sizearray;
   while (i--)
-    if (!weakvalue || ttisrope(&h->array[i])) markvalue(g, &h->array[i]);
+    if (!weakvalue || ttisrope(&h->array[i]) || ttissubstr(&h->array[i])) markvalue(g, &h->array[i]);
   i = sizenode(h);
   while (i--) {
     Node *n = gnode(h, i);
@@ -191,8 +196,8 @@ static int traversetable (global_State *g, Table *h) {
       removeentry(n);  /* remove empty entries */
     else {
       lua_assert(!ttisnil(gkey(n)));
-      if (!weakkey || ttisrope(gkey(n))) markvalue(g, gkey(n));
-      if (!weakvalue || ttisrope(gval(n))) markvalue(g, gval(n));
+      if (!weakkey || ttisrope(gkey(n)) || ttissubstr(gkey(n))) markvalue(g, gkey(n));
+      if (!weakvalue || ttisrope(gval(n)) || ttissubstr(gval(n))) markvalue(g, gval(n));
     }
   }
   return weakkey || weakvalue;
@@ -273,11 +278,14 @@ static void traversestack (global_State *g, lua_State *l) {
 }
 
 
-static l_mem traverserope (global_State *g, TRope *r) {
-  l_mem size = sizeof(TRope);
+static void traverserope (global_State *g, TRope *r) {
   if (r->tsr.left) markobject(g, r->tsr.left);
   if (r->tsr.right) markobject(g, r->tsr.right);
-  return size + sizeof(TRope*) * 2;
+}
+
+
+static void traversesubstr (global_State *g, TSubString *ss) {
+  stringmark(ss->tss.str);
 }
 
 
@@ -329,7 +337,14 @@ static l_mem propagatemark (global_State *g) {
     case LUA_TROPE: {
       TRope *r = rawgco2tr(o);
       g->gray = r->tsr.gclist;
-      return traverserope(g, r);
+      traverserope(g, r);
+      return sizeof(TRope);
+    }
+    case LUA_TSUBSTR: {
+      TSubString *ss = rawgco2ss(o);
+      g->gray = ss->tss.gclist;
+      traversesubstr(g, ss);
+      return sizeof(TSubString);
     }
     default: lua_assert(0); return 0;
   }
@@ -400,6 +415,7 @@ static void freeobj (lua_State *L, GCObject *o) {
     case LUA_TFUNCTION: luaF_freeclosure(L, gco2cl(o)); break;
     case LUA_TUPVAL: luaF_freeupval(L, gco2uv(o)); break;
     case LUA_TROPE: luaS_freerope(L, rawgco2tr(o)); break;
+    case LUA_TSUBSTR: luaM_free(L, rawgco2ss(o)); break;
     case LUA_TTABLE: luaH_free(L, gco2h(o)); break;
     case LUA_TTHREAD: {
       lua_assert(gco2th(o) != L && gco2th(o) != G(L)->mainthread);

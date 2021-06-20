@@ -19,6 +19,8 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
+#include "lstring.h"
+
 
 /* macro to `unsign' a character */
 #define uchar(c)        ((unsigned char)(c))
@@ -52,14 +54,14 @@ static ptrdiff_t posrelat (ptrdiff_t pos, size_t len) {
 
 
 static int str_sub (lua_State *L) {
-  size_t l;
-  const char *s = luaL_checklstring(L, 1, &l);
+  size_t l = lua_objlen(L, 1);
   ptrdiff_t start = posrelat(luaL_checkinteger(L, 2), l);
   ptrdiff_t end = posrelat(luaL_optinteger(L, 3, -1), l);
+  if (lua_type(L, 1) != LUA_TSTRING && lua_type(L, 1) != LUA_TNUMBER) luaL_typerror(L, 1, "string");
   if (start < 1) start = 1;
   if (end > (ptrdiff_t)l) end = (ptrdiff_t)l;
   if (start <= end)
-    lua_pushlstring(L, s+start-1, end-start+1);
+    lua_pushsubstring(L, 1, start, end - start + 1);
   else lua_pushliteral(L, "");
   return 1;
 }

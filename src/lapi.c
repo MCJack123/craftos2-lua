@@ -245,7 +245,7 @@ LUA_API void lua_pushvalue (lua_State *L, int idx) {
 
 LUA_API int lua_type (lua_State *L, int idx) {
   StkId o = index2adr(L, idx);
-  return (o == luaO_nilobject) ? LUA_TNONE : (ttisrope(o) ? LUA_TSTRING : ttype(o));
+  return (o == luaO_nilobject) ? LUA_TNONE : (ttisrope(o) || ttissubstr(o) ? LUA_TSTRING : ttype(o));
 }
 
 
@@ -350,6 +350,10 @@ LUA_API int lua_toboolean (lua_State *L, int idx) {
 
 LUA_API const char *lua_tolstring (lua_State *L, int idx, size_t *len) {
   StkId o = index2adr(L, idx);
+  if (ttissubstr(o)) {
+    if (len != NULL) *len = ssvalue(o)->len;
+    return getstr(ssvalue(o)->str) + ssvalue(o)->offset;
+  }
   if (!ttisstring(o)) {
     lua_lock(L);  /* `luaV_tostring' may create a new string */
     if (!luaV_tostring(L, o)) {  /* conversion failed? */
@@ -371,6 +375,7 @@ LUA_API size_t lua_objlen (lua_State *L, int idx) {
   switch (ttype(o)) {
     case LUA_TSTRING: return tsvalue(o)->len;
     case LUA_TROPE: return trvalue(o)->len;
+    case LUA_TSUBSTR: return ssvalue(o)->len;
     case LUA_TUSERDATA: return uvalue(o)->len;
     case LUA_TTABLE: return luaH_getn(hvalue(o));
     case LUA_TNUMBER: {
@@ -389,6 +394,7 @@ LUA_API size_t lua_totalobjlen (lua_State *L, int idx) {
   switch (ttype(o)) {
     case LUA_TSTRING: return tsvalue(o)->len;
     case LUA_TROPE: return trvalue(o)->len;
+    case LUA_TSUBSTR: return ssvalue(o)->len;
     case LUA_TUSERDATA: return uvalue(o)->len;
     case LUA_TTABLE: {
       Table* t = hvalue(o);
@@ -519,6 +525,40 @@ LUA_API const char *lua_pushfstring (lua_State *L, const char *fmt, ...) {
 }
 
 
+LUA_API const char *lua_pushsubstring (lua_State *L, int idx, size_t start, size_t len) {
+  TSubString *ss;
+  TString *str;
+  StkId o;
+  lua_lock(L);
+  luaC_checkGC(L);
+  o = index2adr(L, idx);
+  switch (ttype(o)) {
+    case LUA_TSTRING: str = rawtsvalue(o); break;
+    case LUA_TSUBSTR: str = ssvalue(o)->str; start += ssvalue(o)->offset; break;
+    default: {
+      /* try to cast to a string */
+      if (!luaV_tostring(L, o)) {  /* conversion failed? */
+        lua_unlock(L);
+        return NULL;
+      }
+      luaC_checkGC(L);
+      o = index2adr(L, idx);  /* previous call may reallocate the stack */
+      str = rawtsvalue(o);
+      break;
+    }
+  }
+  ss = luaM_new(L, TSubString);
+  luaC_link(L, obj2gco(ss), LUA_TSUBSTR);
+  ss->tss.str = str;
+  ss->tss.offset = start - 1;
+  ss->tss.len = len;
+  setssvalue(L, L->top, ss);
+  api_incr_top(L);
+  lua_unlock(L);
+  return getstr(ss->tss.str) + ss->tss.offset;
+}
+
+
 LUA_API void lua_pushcclosure (lua_State *L, lua_CFunction fn, int n) {
   Closure *cl;
   lua_lock(L);
@@ -637,7 +677,7 @@ LUA_API int lua_getmetatable (lua_State *L, int objindex) {
     case LUA_TUSERDATA:
       mt = uvalue(obj)->metatable;
       break;
-    case LUA_TROPE:
+    case LUA_TROPE: case LUA_TSUBSTR:
       mt = G(L)->mt[LUA_TSTRING];
       break;
     case LUA_TNONE: break;  /* safety net */

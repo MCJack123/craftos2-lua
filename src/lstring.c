@@ -116,7 +116,8 @@ TRope *luaS_concat (lua_State *L, TRope *l, TRope *r) {
   rope->tsr.left = l;
   rope->tsr.right = r;
   rope->tsr.parent = NULL;
-  rope->tsr.len = (l->tsr.tt == LUA_TSTRING ? cast(TString *, l)->tsv.len : l->tsr.len) + (r->tsr.tt == LUA_TSTRING ? cast(TString *, r)->tsv.len : r->tsr.len);
+  rope->tsr.len = (l->tsr.tt == LUA_TSTRING ? cast(TString *, l)->tsv.len : (l->tsr.tt == LUA_TSUBSTR ? cast(TSubString *, l)->tss.len : l->tsr.len)) +
+                  (r->tsr.tt == LUA_TSTRING ? cast(TString *, r)->tsv.len : (r->tsr.tt == LUA_TSUBSTR ? cast(TSubString *, r)->tss.len : r->tsr.len));
   return rope;
 }
 
@@ -125,7 +126,7 @@ TString *luaS_build (lua_State *L, TRope *rope) {
   TString *s;
   TRope **stack, **base;
   size_t stacksize = 8;
-  if (rope->tsr.tt == LUA_TSTRING) return cast(TString *, rope);
+  if (rope->tsr.tt == LUA_TSTRING || rope->tsr.tt == LUA_TSUBSTR) return cast(TString *, rope);
   buffer = cur = luaZ_openspace(L, &G(L)->buff, rope->tsr.len);
   base = stack = luaM_newvector(L, stacksize, TRope *);
   do {
@@ -140,11 +141,21 @@ TString *luaS_build (lua_State *L, TRope *rope) {
       *stack++ = rope;
       rope = rope->tsr.left;
     }
-    memcpy(cur, getstr(cast(TString *, rope->tsr.left)), cast(TString *, rope->tsr.left)->tsv.len);
-    cur += cast(TString *, rope->tsr.left)->tsv.len;
-    while (rope->tsr.right->tsr.tt == LUA_TSTRING) {
-      memcpy(cur, getstr(cast(TString *, rope->tsr.right)), cast(TString *, rope->tsr.right)->tsv.len);
-      cur += cast(TString *, rope->tsr.right)->tsv.len;
+    if (rope->tsr.left->tsr.tt == LUA_TSUBSTR) {
+      memcpy(cur, getstr(cast(TSubString *, rope->tsr.left)->tss.str) + cast(TSubString *, rope->tsr.left)->tss.offset, cast(TSubString *, rope->tsr.left)->tss.len);
+      cur += cast(TSubString *, rope->tsr.left)->tss.len;
+    } else {
+      memcpy(cur, getstr(cast(TString *, rope->tsr.left)), cast(TString *, rope->tsr.left)->tsv.len);
+      cur += cast(TString *, rope->tsr.left)->tsv.len;
+    }
+    while (rope->tsr.right->tsr.tt == LUA_TSTRING || rope->tsr.right->tsr.tt == LUA_TSUBSTR) {
+      if (rope->tsr.right->tsr.tt == LUA_TSUBSTR) {
+        memcpy(cur, getstr(cast(TSubString *, rope->tsr.right)->tss.str) + cast(TSubString *, rope->tsr.right)->tss.offset, cast(TSubString *, rope->tsr.right)->tss.len);
+        cur += cast(TSubString *, rope->tsr.right)->tss.len;
+      } else {
+        memcpy(cur, getstr(cast(TString *, rope->tsr.right)), cast(TString *, rope->tsr.right)->tsv.len);
+        cur += cast(TString *, rope->tsr.right)->tsv.len;
+      }
       if (stack <= base) {b = 1; break;}
       rope = *--stack;
     }

@@ -472,6 +472,7 @@ const TValue *luaH_get (lua_State *L, Table *t, const TValue *key) {
     case LUA_TNIL: return luaO_nilobject;
     case LUA_TSTRING: return luaH_getstr(t, rawtsvalue(key));
     case LUA_TROPE: return luaH_getstr(t, luaS_build(L, rawtrvalue(key)));
+    case LUA_TSUBSTR: return luaH_getstr(t, luaS_newlstr(L, getstr(ssvalue(key)->str) + ssvalue(key)->offset, ssvalue(key)->len));
     case LUA_TNUMBER: {
       int k;
       lua_Number n = nvalue(key);

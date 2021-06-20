@@ -29,6 +29,7 @@
 #define LUA_TUPVAL	(LAST_TAG+2)
 #define LUA_TDEADKEY	(LAST_TAG+3)
 #define LUA_TROPE   (LAST_TAG+4)
+#define LUA_TSUBSTR (LAST_TAG+5)
 
 
 /*
@@ -87,6 +88,7 @@ typedef struct lua_TValue {
 #define ttisthread(o)	(ttype(o) == LUA_TTHREAD)
 #define ttislightuserdata(o)	(ttype(o) == LUA_TLIGHTUSERDATA)
 #define ttisrope(o) (ttype(o) == LUA_TROPE)
+#define ttissubstr(o) (ttype(o) == LUA_TSUBSTR)
 
 /* Macros to access values */
 #define ttype(o)	((o)->tt)
@@ -103,6 +105,8 @@ typedef struct lua_TValue {
 #define thvalue(o)	check_exp(ttisthread(o), &(o)->value.gc->th)
 #define rawtrvalue(o)  check_exp(ttisrope(o), &(o)->value.gc->r)
 #define trvalue(o)	(&rawtrvalue(o)->tsr)
+#define rawssvalue(o)  check_exp(ttissubstr(o), &(o)->value.gc->ss)
+#define ssvalue(o)	(&rawssvalue(o)->tss)
 
 #define l_isfalse(o)	(ttisnil(o) || (ttisboolean(o) && bvalue(o) == 0))
 
@@ -162,6 +166,11 @@ typedef struct lua_TValue {
 #define setrvalue(L,obj,x) \
   { TValue *i_o=(obj); \
     i_o->value.gc=cast(GCObject *, (x)); i_o->tt=LUA_TROPE; \
+    checkliveness(G(L),i_o); }
+
+#define setssvalue(L,obj,x) \
+  { TValue *i_o=(obj); \
+    i_o->value.gc=cast(GCObject *, (x)); i_o->tt=LUA_TSUBSTR; \
     checkliveness(G(L),i_o); }
 
 
@@ -244,6 +253,18 @@ typedef union TRope {
     size_t len;
   } tsr;
 } TRope;
+
+
+typedef union TSubString {
+  L_Umaxalign dummy;  /* ensures maximum alignment for substrings */
+  struct {
+    CommonHeader;
+    GCObject *gclist;
+    TString *str;
+    size_t offset;
+    size_t len;
+  } tss;
+} TSubString;
 
 /*
 ** Function Prototypes
