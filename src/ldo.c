@@ -295,8 +295,10 @@ void luaD_callhook (lua_State *L, int event, int line) {
     lua_lock(L);
     lua_assert(nohooks(L));
     if (L->status == LUA_YIELD) {  /* handle hook yield here, after restore */
-      L->base = L->top;  /* protect Lua frame, undo this in f_coresume */
-      SAVEPC(L, GETPC(L) - 1);  /* correct pc */
+      if (L->ci == ci) {
+        L->base = L->top;  /* protect Lua frame, undo this in f_coresume (does this wreck yield results?) */
+        SAVEPC(L, GETPC(L) - 1);  /* correct pc */
+      }
       luaD_throw(L, LUA_YIELD);
     }
     ci->ishook = 0;
