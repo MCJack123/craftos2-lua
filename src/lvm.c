@@ -310,9 +310,9 @@ int luaV_equalval (lua_State *L, const TValue *t1, const TValue *t2) {
 
 static TRope *makerope(lua_State *L, StkId start, int len) {
   switch (len) {
-    case 1: return cast(TRope *, rawtsvalue(start)); /* this should never happen */
-    case 2: return luaS_concat(L, cast(TRope *, rawtsvalue(start)), cast(TRope *, rawtsvalue(start + 1)));
-    case 3: return luaS_concat(L, cast(TRope *, rawtsvalue(start)), luaS_concat(L, cast(TRope *, rawtsvalue(start + 1)), cast(TRope *, rawtsvalue(start + 2))));
+    case 1: return cast(TRope *, gcvalue(start)); /* this should never happen */
+    case 2: return luaS_concat(L, cast(TRope *, gcvalue(start)), cast(TRope *, gcvalue(start + 1)));
+    case 3: return luaS_concat(L, cast(TRope *, gcvalue(start)), luaS_concat(L, cast(TRope *, gcvalue(start + 1)), cast(TRope *, gcvalue(start + 2))));
     default: return luaS_concat(L, makerope(L, start, len / 2), makerope(L, start + (len / 2), len - (len / 2)));
   }
 }

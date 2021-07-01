@@ -1192,7 +1192,7 @@ LUA_API const char *lua_setupvalue (lua_State *L, int funcindex, int n) {
 static UpVal **getupvalref (lua_State *L, int fidx, int n) {
   LClosure *f;
   StkId fi = index2adr(L, fidx);
-  api_check(L, ttisLclosure(fi)/*, "Lua function expected"*/);
+  api_check(L, ttisfunction(fi) && !clvalue(fi)->c.isC/*, "Lua function expected"*/);
   f = &clvalue(fi)->l;
   api_check(L, (1 <= n && n <= f->p->sizeupvalues)/*, "invalid upvalue index"*/);
   return &f->upvals[n - 1];  /* get its upvalue pointer */

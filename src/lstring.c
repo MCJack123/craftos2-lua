@@ -115,7 +115,6 @@ TRope *luaS_concat (lua_State *L, TRope *l, TRope *r) {
   luaC_link(L, obj2gco(rope), LUA_TROPE);
   rope->tsr.left = l;
   rope->tsr.right = r;
-  rope->tsr.parent = NULL;
   rope->tsr.len = (l->tsr.tt == LUA_TSTRING ? cast(TString *, l)->tsv.len : (l->tsr.tt == LUA_TSUBSTR ? cast(TSubString *, l)->tss.len : l->tsr.len)) +
                   (r->tsr.tt == LUA_TSTRING ? cast(TString *, r)->tsv.len : (r->tsr.tt == LUA_TSUBSTR ? cast(TSubString *, r)->tss.len : r->tsr.len));
   return rope;
@@ -124,19 +123,18 @@ TRope *luaS_concat (lua_State *L, TRope *l, TRope *r) {
 TString *luaS_build (lua_State *L, TRope *rope) {
   char *buffer, *cur;
   TString *s;
-  TRope **stack, **base;
-  size_t stacksize = 8;
+  TRope **stack;
   if (rope->tsr.tt == LUA_TSTRING || rope->tsr.tt == LUA_TSUBSTR) return cast(TString *, rope);
   buffer = cur = luaZ_openspace(L, &G(L)->buff, rope->tsr.len);
-  base = stack = luaM_newvector(L, stacksize, TRope *);
+  stack = G(L)->ropestack;
   do {
     int b = 0;
     while (rope->tsr.left->tsr.tt == LUA_TROPE) {
-      if (stack - base == stacksize - 1) {
-        TRope **oldbase = base;
-        luaM_reallocvector(L, base, stacksize, stacksize + stacksize, TRope *);
-        stack = base + (stack - oldbase);
-        stacksize += stacksize;
+      if (stack - G(L)->ropestack == G(L)->ropestacksize - 1) {
+        TRope **oldbase = G(L)->ropestack;
+        luaM_reallocvector(L, G(L)->ropestack, G(L)->ropestacksize, G(L)->ropestacksize + G(L)->ropestacksize, TRope *);
+        stack = G(L)->ropestack + (stack - oldbase);
+        G(L)->ropestacksize += G(L)->ropestacksize;
       }
       *stack++ = rope;
       rope = rope->tsr.left;
@@ -156,13 +154,12 @@ TString *luaS_build (lua_State *L, TRope *rope) {
         memcpy(cur, getstr(cast(TString *, rope->tsr.right)), cast(TString *, rope->tsr.right)->tsv.len);
         cur += cast(TString *, rope->tsr.right)->tsv.len;
       }
-      if (stack <= base) {b = 1; break;}
+      if (stack <= G(L)->ropestack) {b = 1; break;}
       rope = *--stack;
     }
     if (b) break;
     rope = rope->tsr.right;
-  } while (stack >= base);
-  luaM_freearray(L, base, stacksize, TRope *);
+  } while (stack >= G(L)->ropestack);
   s = luaS_newlstr(L, buffer, cur - buffer);
   return s;
 }

@@ -103,6 +103,8 @@ typedef struct global_State {
   int lockstate;  /* 0 = unlocked, 1 = locked */
   int haltstate;  /* set to indicate state execution should be halted (1 = halt all, 2 = throw error) */
   const char * haltmessage;  /* if haltstate is 2, a message to show as the error message */
+  TRope **ropestack;  /* temporary stack used to store ropes when constructing strings */
+  int ropestacksize;  /* size of above stack */
 } global_State;
 
 
@@ -174,7 +176,7 @@ union GCObject {
 #define rawgco2tr(o)	check_exp((o)->gch.tt == LUA_TROPE, &((o)->r))
 #define gco2tr(o)	(&rawgco2tr(o)->tsr)
 #define rawgco2ss(o)	check_exp((o)->gch.tt == LUA_TSUBSTR, &((o)->ss))
-#define gco2ss(o)	(&rawgco2tr(o)->tss)
+#define gco2ss(o)	(&rawgco2ss(o)->tss)
 
 /* macro to convert any Lua object into a GCObject */
 #define obj2gco(v)	(cast(GCObject *, (v)))

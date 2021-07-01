@@ -113,7 +113,7 @@ static void reallymarkobject (global_State *g, GCObject *o) {
       break;
     }
     case LUA_TSUBSTR: {
-      gco2tr(o)->gclist = g->gray;
+      gco2ss(o)->gclist = g->gray;
       g->gray = o;
       break;
     }
@@ -279,8 +279,14 @@ static void traversestack (global_State *g, lua_State *l) {
 
 
 static void traverserope (global_State *g, TRope *r) {
-  if (r->tsr.left) markobject(g, r->tsr.left);
-  if (r->tsr.right) markobject(g, r->tsr.right);
+  if (r->tsr.left) {
+    if (r->tsr.left->tsr.tt == LUA_TSTRING) stringmark(cast(TString *, r->tsr.left));
+    else markobject(g, r->tsr.left);
+  }
+  if (r->tsr.right) {
+    if (r->tsr.right->tsr.tt == LUA_TSTRING) stringmark(cast(TString *, r->tsr.right));
+    else markobject(g, r->tsr.right);
+  }
 }
 
 
@@ -723,7 +729,7 @@ void luaC_barrierback (lua_State *L, Table *t) {
 void luaC_upvalbarrier_ (lua_State *L, UpVal *uv) {
   global_State *g = G(L);
   GCObject *o = gcvalue(uv->v);
-  lua_assert(!upisopen(uv));  /* ensured by macro luaC_upvalbarrier */
+  lua_assert(uv->v == NULL);  /* ensured by macro luaC_upvalbarrier */
   if (g->gcstate <= GCSpropagate)
     markobject(g, o);
 }

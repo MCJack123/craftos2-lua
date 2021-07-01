@@ -83,6 +83,7 @@ static int f_luaopen (lua_State *L, void *ud) {
   luaT_init(L);
   luaX_init(L);
   luaS_fix(luaS_newliteral(L, MEMERRMSG));
+  g->ropestack = luaM_newvector(L, g->ropestacksize, TRope *);
   g->GCthreshold = 4*g->totalbytes;
   return 0;
 }
@@ -117,6 +118,7 @@ static void close_state (lua_State *L) {
   luaM_freearray(L, G(L)->strt.hash, G(L)->strt.size, TString *);
   luaZ_freebuffer(L, &g->buff);
   freestack(L, L);
+  luaM_freearray(L, g->ropestack, g->ropestacksize, TRope *);
   lua_assert(g->totalbytes == sizeof(LG));
   if (g->lockstate) lua_unlock(L);
   _lua_freelock(g->lock);
@@ -189,6 +191,7 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud) {
   g->lock = _lua_newlock();
   g->lockstate = 0;
   g->haltstate = 0;
+  g->ropestacksize = 8;
   for (i=0; i<NUM_TAGS; i++) g->mt[i] = NULL;
   if (luaD_rawrunprotected(L, f_luaopen, NULL) != 0) {
     /* memory allocation error: free partial state */

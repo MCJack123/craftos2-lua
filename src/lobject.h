@@ -249,7 +249,6 @@ typedef union TRope {
     GCObject *gclist;
     union TRope * left;
     union TRope * right;
-    union TRope * parent;
     size_t len;
   } tsr;
 } TRope;
