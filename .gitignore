@@ -15,3 +15,5 @@ ARM64
 lua
 luac
 *.vcxproj.user
+*.so
+*.dylib

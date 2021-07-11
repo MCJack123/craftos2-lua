@@ -13,6 +13,7 @@ CFLAGS= -Wall -g -O2 $(MYCFLAGS)
 CXXFLAGS= $(CFLAGS) 
 MYAR?= ar rcu
 RANLIB?= ranlib
+DYLD?= $(CXX) -shared -fPIC
 RM= rm -f
 LIBS= -lm $(MYLIBS)
 
@@ -25,6 +26,7 @@ MYLIBS=
 PLATS= aix ansi bsd freebsd generic linux macosx mingw posix solaris emscripten
 
 LUA_A?=	liblua.a
+LUA_D?= liblua.so
 CORE_O=	lapi.o lcode.o ldebug.o ldo.o ldump.o lfunc.o lgc.o llex.o lmem.o \
 	lobject.o lopcodes.o lparser.o lstate.o lstring.o ltable.o ltm.o  \
 	lundump.o lvm.o lzio.o llock.o
@@ -38,8 +40,8 @@ LUAC_T=	luac
 LUAC_O=	luac.o print.o
 
 ALL_O= $(CORE_O) $(LIB_O) $(LUA_O) $(LUAC_O)
-ALL_T= $(LUA_A)
-ALL_A= $(LUA_A)
+ALL_T= $(LUA_D)
+ALL_A= $(LUA_D)
 
 default: $(PLAT)
 
@@ -48,6 +50,9 @@ all:	$(ALL_T)
 o:	$(ALL_O)
 
 a:	$(ALL_A)
+
+$(LUA_D): $(CORE_O) $(LIB_O)
+	$(DYLD) -o $@ $(CORE_O) $(LIB_O)
 
 $(LUA_A): $(CORE_O) $(LIB_O)
 	$(MYAR) $@ $(CORE_O) $(LIB_O)
@@ -101,10 +106,10 @@ linux:
 	$(MAKE) all MYCFLAGS="-DLUA_USE_LINUX -fPIC" MYLIBS="-Wl,-E -ldl -lreadline -lhistory -lncurses"
 
 macosx:
-	$(MAKE) all MYCFLAGS="-DLUA_USE_LINUX -mmacosx-version-min=10.9" MYLIBS="-lreadline"
+	$(MAKE) all MYCFLAGS="-DLUA_USE_LINUX -mmacosx-version-min=10.9" MYLIBS="-lreadline" LUA_D="liblua.dylib" DYLD="$(CXX) -dynamiclib -fPIC"
 
 macosx-arm:
-	$(MAKE) all MYCFLAGS="-DLUA_USE_LINUX -mmacosx-version-min=11.0 -target arm64-apple-macos11" MYLIBS="-lreadline" LUA_A="liblua-arm64.a"
+	$(MAKE) all MYCFLAGS="-DLUA_USE_LINUX -mmacosx-version-min=11.0 -target arm64-apple-macos11" MYLIBS="-lreadline" LUA_D="liblua-arm64.dylib" DYLD="$(CXX) -target arm64-apple-macos11 -dynamiclib -fPIC"
 # use this on Mac OS X 10.3-
 #	$(MAKE) all MYCFLAGS=-DLUA_USE_MACOSX
 
