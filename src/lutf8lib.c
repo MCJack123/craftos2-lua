@@ -239,14 +239,14 @@ static const luaL_Reg funcs[] = {
   {"char", utfchar},
   {"len", utflen},
   {"codes", iter_codes},
-  /* placeholders */
-  {"charpattern", NULL},
   {NULL, NULL}
 };
 
 
 LUALIB_API int luaopen_utf8 (lua_State *L) {
   luaL_register(L, LUA_UTF8LIBNAME, funcs);
+  lua_pushliteral(L, UTF8PATT);
+  lua_setfield(L, -2, "charpattern");
   return 1;
 }
 
