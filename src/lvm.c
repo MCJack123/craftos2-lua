@@ -241,6 +241,28 @@ static int l_strcmp (const TString *ls, const TString *rs) {
 }
 
 
+static int l_substrcmp (const TSubString *ls, const TSubString *rs) {
+  const char *l = getstr(ls->tss.str) + ls->tss.offset;
+  size_t ll = ls->tss.len;
+  const char *r = getstr(rs->tss.str) + rs->tss.offset;
+  size_t lr = rs->tss.len;
+  for (;;) {
+    int temp = strcoll(l, r);
+    if (temp != 0) return temp;
+    else {  /* strings are equal up to a `\0' */
+      size_t len = strlen(l);  /* index of first `\0' in both strings */
+      if (len == lr)  /* r is finished? */
+        return (len == ll) ? 0 : 1;
+      else if (len == ll)  /* l is finished? */
+        return -1;  /* l is smaller than r (because r is not finished) */
+      /* both strings longer than `len'; go on comparing (after the `\0') */
+      len++;
+      l += len; ll -= len; r += len; lr -= len;
+    }
+  }
+}
+
+
 int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
   int res;
   resolverope(L, l);
@@ -251,6 +273,8 @@ int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
     return luai_numlt(nvalue(l), nvalue(r));
   else if (ttisstring(l))
     return l_strcmp(rawtsvalue(l), rawtsvalue(r)) < 0;
+  else if (ttissubstr(l))
+    return l_substrcmp(rawssvalue(l), rawssvalue(r)) < 0;
   else if ((res = call_orderTM(L, l, r, TM_LT)) != -1)
     return res;
   return luaG_ordererror(L, l, r);
@@ -260,15 +284,15 @@ int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
 static int lessequal (lua_State *L, const TValue *l, const TValue *r) {
   int res;
   resolverope(L, l);
-  resolvesubstr(L, l);
   resolverope(L, r);
-  resolvesubstr(L, r);
   if (ttype(l) != ttype(r))
     return luaG_ordererror(L, l, r);
   else if (ttisnumber(l))
     return luai_numle(nvalue(l), nvalue(r));
   else if (ttisstring(l))
     return l_strcmp(rawtsvalue(l), rawtsvalue(r)) <= 0;
+  else if (ttissubstr(l))
+    return l_substrcmp(rawssvalue(l), rawssvalue(r)) <= 0;
   else if ((res = call_orderTM(L, l, r, TM_LE)) != -1)  /* first try `le' */
     return res;
   else if ((res = call_orderTM(L, r, l, TM_LT)) != -1)  /* else try `lt' */
