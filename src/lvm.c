@@ -400,6 +400,60 @@ static void Arith (lua_State *L, StkId ra, const TValue *rb,
 }
 
 
+#ifdef LUA_DEBUG_VM
+static void PrintString(const TString* ts)
+{
+ const char* s=getstr(ts);
+ size_t i,n=ts->tsv.len;
+ putchar('"');
+ for (i=0; i<n; i++)
+ {
+  int c=s[i];
+  switch (c)
+  {
+   case '"': printf("\\\""); break;
+   case '\\': printf("\\\\"); break;
+   case '\a': printf("\\a"); break;
+   case '\b': printf("\\b"); break;
+   case '\f': printf("\\f"); break;
+   case '\n': printf("\\n"); break;
+   case '\r': printf("\\r"); break;
+   case '\t': printf("\\t"); break;
+   case '\v': printf("\\v"); break;
+   default:	if (isprint((unsigned char)c))
+   			putchar(c);
+		else
+			printf("\\%03u",(unsigned char)c);
+  }
+ }
+ putchar('"');
+}
+
+static void PrintConstant(const Proto* f, int i)
+{
+ const TValue* o=&f->k[i];
+ switch (ttype(o))
+ {
+  case LUA_TNIL:
+	printf("nil");
+	break;
+  case LUA_TBOOLEAN:
+	printf(bvalue(o) ? "true" : "false");
+	break;
+  case LUA_TNUMBER:
+	printf(LUA_NUMBER_FMT,nvalue(o));
+	break;
+  case LUA_TSTRING:
+	PrintString(rawtsvalue(o));
+	break;
+  default:				/* cannot happen */
+	printf("? type=%d",ttype(o));
+	break;
+ }
+}
+#endif
+
+
 
 /*
 ** some macros for common tasks in `luaV_execute'
@@ -490,6 +544,84 @@ int luaV_execute (lua_State *L) {
     lua_assert(base == L->base && L->base == L->ci->base);
     lua_assert(base <= L->top && L->top <= L->stack + L->stacksize);
     lua_assert(L->top == L->ci->top || luaG_checkopenop(i));
+#ifdef LUA_DEBUG_VM
+    {
+      OpCode o=GET_OPCODE(i);
+      int a=GETARG_A(i);
+      int b=GETARG_B(i);
+      int c=GETARG_C(i);
+      int bx=GETARG_Bx(i);
+      int sbx=GETARG_sBx(i);
+      int line=getline(cl->p,pc - cl->p->code);
+      printf("\t%d\t",pc-cl->p->code+1);
+      if (line>0) printf("[%d]\t",line); else printf("[-]\t");
+      printf("%-9s\t",luaP_opnames[o]);
+      switch (getOpMode(o))
+      {
+       case iABC:
+        printf("%d",a);
+        if (getBMode(o)!=OpArgN) printf(" %d",ISK(b) ? (-1-INDEXK(b)) : b);
+        if (getCMode(o)!=OpArgN) printf(" %d",ISK(c) ? (-1-INDEXK(c)) : c);
+        break;
+       case iABx:
+        if (getBMode(o)==OpArgK) printf("%d %d",a,-1-bx); else printf("%d %d",a,bx);
+        break;
+       case iAsBx:
+        if (o==OP_JMP) printf("%d",sbx); else printf("%d %d",a,sbx);
+        break;
+      }
+      switch (o)
+      {
+       case OP_LOADK:
+        printf("\t; "); PrintConstant(cl->p,bx);
+        break;
+       case OP_GETUPVAL:
+       case OP_SETUPVAL:
+        printf("\t; %s", (cl->p->sizeupvalues>0) ? getstr(cl->p->upvalues[b]) : "-");
+        break;
+       case OP_GETGLOBAL:
+       case OP_SETGLOBAL:
+        printf("\t; %s",svalue(&cl->p->k[bx]));
+        break;
+       case OP_GETTABLE:
+       case OP_SELF:
+        if (ISK(c)) { printf("\t; "); PrintConstant(cl->p,INDEXK(c)); }
+        break;
+       case OP_SETTABLE:
+       case OP_ADD:
+       case OP_SUB:
+       case OP_MUL:
+       case OP_DIV:
+       case OP_POW:
+       case OP_EQ:
+       case OP_LT:
+       case OP_LE:
+        if (ISK(b) || ISK(c))
+        {
+         printf("\t; ");
+         if (ISK(b)) PrintConstant(cl->p,INDEXK(b)); else printf("-");
+         printf(" ");
+         if (ISK(c)) PrintConstant(cl->p,INDEXK(c)); else printf("-");
+        }
+        break;
+       case OP_JMP:
+       case OP_FORLOOP:
+       case OP_FORPREP:
+        printf("\t; to %d",sbx+pc+2);
+        break;
+       case OP_CLOSURE:
+        printf("\t; %p",(cl->p->p[bx]));
+        break;
+       case OP_SETLIST:
+        if (c==0) printf("\t; %d",*(pc+1));
+        else printf("\t; %d",c);
+        break;
+       default:
+        break;
+      }
+      printf("\n");
+    }
+#endif
     switch (GET_OPCODE(i)) {
       case OP_MOVE: {
         setobjs2s(L, ra, RB(i));

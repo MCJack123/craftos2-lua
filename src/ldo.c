@@ -306,6 +306,7 @@ void luaD_callhook (lua_State *L, int event, int line) {
     L->nCcalls = ci->hook_old_nCcalls;  /* restore call flags */
     ci->top = restorestack(L, ci->hook_ci_top);
     L->top = restorestack(L, ci->hook_top);
+    L->ctx = 0;
   }
 }
 
