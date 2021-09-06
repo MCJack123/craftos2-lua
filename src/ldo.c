@@ -273,6 +273,7 @@ void luaD_callhook (lua_State *L, int event, int line) {
   if (hook && (!nohooks(L) || event == LUA_HOOKERROR)) {
     lua_Debug ar;
     CallInfo* ci = L->ci;
+    const Instruction *oldpc = GETPC(L);
     ci->hook_top = savestack(L, L->top);
     ci->hook_ci_top = savestack(L, ci->top);
     ar.event = event;
@@ -306,7 +307,7 @@ void luaD_callhook (lua_State *L, int event, int line) {
     L->nCcalls = ci->hook_old_nCcalls;  /* restore call flags */
     ci->top = restorestack(L, ci->hook_ci_top);
     L->top = restorestack(L, ci->hook_top);
-    L->ctx = 0;
+    SAVEPC(L, oldpc);
   }
 }
 
