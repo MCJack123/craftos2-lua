@@ -247,7 +247,8 @@ static int l_substrcmp (const TSubString *ls, const TSubString *rs) {
   const char *r = getstr(rs->tss.str) + rs->tss.offset;
   size_t lr = rs->tss.len;
   for (;;) {
-    int temp = strcoll(l, r);
+    /* Unfortunately we cannot use strcoll here due to length, so use standard strncmp. */
+    int temp = strncmp(l, r, lr > ll ? ll : lr);
     if (temp != 0) return temp;
     else {  /* strings are equal up to a `\0' */
       size_t len = strlen(l);  /* index of first `\0' in both strings */
@@ -255,6 +256,8 @@ static int l_substrcmp (const TSubString *ls, const TSubString *rs) {
         return (len == ll) ? 0 : 1;
       else if (len == ll)  /* l is finished? */
         return -1;  /* l is smaller than r (because r is not finished) */
+      else if (len > ll && l > lr)  /* the next `\0' is beyond the end of the substring */
+        return 0;  /* l or r is finished */
       /* both strings longer than `len'; go on comparing (after the `\0') */
       len++;
       l += len; ll -= len; r += len; lr -= len;
