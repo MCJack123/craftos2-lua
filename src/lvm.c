@@ -310,7 +310,9 @@ int luaV_equalval (lua_State *L, const TValue *t1, const TValue *t2) {
   resolvesubstr(L, t1);
   resolverope(L, t2);
   resolvesubstr(L, t2);
-  lua_assert(ttype(t1) == ttype(t2));
+  if ((ttype(t1) == LUA_TSTRING) != (ttype(t2) == LUA_TSTRING) && call_binTM(L, t1, t2, L->top, TM_STREQ))
+    return !l_isfalse(L->top);
+  if (ttype(t1) != ttype(t2)) return 0;
   switch (ttype(t1)) {
     case LUA_TNIL: return 1;
     case LUA_TNUMBER: return luai_numeq(nvalue(t1), nvalue(t2));

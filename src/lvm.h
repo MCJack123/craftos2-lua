@@ -19,7 +19,7 @@
                          (((o) = luaV_tonumber(L,o,n)) != NULL))
 
 #define equalobj(L,o1,o2) \
-	(ttype(o1) == ttype(o2) && luaV_equalval(L, o1, o2))
+	(/*ttype(o1) == ttype(o2) &&*/ luaV_equalval(L, o1, o2))
 	
 #define GETPC(L)	(cast(const Instruction *, L->ctx))
 #define SAVEPC(L, pc)	L->ctx = cast(void *, (pc))
