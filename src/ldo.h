@@ -37,6 +37,7 @@
 #define LUA_NOHOOKS	1
 #define LUA_NOVPCALL	2
 #define LUA_NOYIELD	4
+#define LUA_NOERRFUNC 8
 
 #define nohooks(L)	(L->nCcalls & LUA_NOHOOKS)
 #define novpcall(L)	(L->nCcalls & LUA_NOVPCALL)

@@ -98,11 +98,11 @@ static int call_errfunc (lua_State *L) {
   for (ci = L->ci; ci > L->base_ci && ci->errfunc == 0; ci--) ;
   if (ci->errfunc >= 2) {
     StkId errfunc = ci->base + (ci->errfunc - 2);
-    if (!ttisfunction(errfunc)) return LUA_ERRERR;
+    if (!ttisfunction(errfunc) || (L->nCcalls & LUA_NOERRFUNC)) return LUA_ERRERR;
     setobjs2s(L, L->top, L->top - 1);  /* move argument */
     setobjs2s(L, L->top - 1, errfunc);  /* push function */
     incr_top(L);
-    luaD_call(L, L->top - 2, 1, LUA_NOYIELD | LUA_NOVPCALL);  /* call it */
+    luaD_call(L, L->top - 2, 1, LUA_NOYIELD | LUA_NOVPCALL | LUA_NOERRFUNC);  /* call it */
   }
   return LUA_ERRRUN;
 }
@@ -492,11 +492,11 @@ void luaD_call (lua_State *L, StkId func, int nresults, int callflags) {
   unsigned short old_nCcalls = L->nCcalls;
   int pcr;
   if (nohooks(L)) callflags |= LUA_NOHOOKS;
-  L->nCcalls = (old_nCcalls + 8) | callflags;
-  if (L->nCcalls >= LUAI_MAXCCALLS*8) {
-    if (L->nCcalls < (LUAI_MAXCCALLS+1)*8)
+  L->nCcalls = (old_nCcalls + 16) | callflags;
+  if (L->nCcalls >= LUAI_MAXCCALLS*16) {
+    if (L->nCcalls < (LUAI_MAXCCALLS+1)*16)
        luaG_runerror(L, "C stack overflow");
-    else if (L->nCcalls >= (LUAI_MAXCCALLS + (LUAI_MAXCCALLS>>3))*8)
+    else if (L->nCcalls >= (LUAI_MAXCCALLS + (LUAI_MAXCCALLS>>4))*16)
        luaD_throw(L, LUA_ERRERR);  /* error while handing stack error */
    }
   pcr = luaD_precall(L, func, nresults);
@@ -549,7 +549,7 @@ static int resume_error (lua_State *L, const char *msg) {
   void *ud;
   int status, old_nCcalls;
   lua_lock(L);
-  if (L->nCcalls >= LUAI_MAXCCALLS*8)
+  if (L->nCcalls >= LUAI_MAXCCALLS*16)
     return resume_error(L, "C stack overflow");
   if (L->status == 0 && L->ci != L->base_ci)
     return resume_error(L, "cannot resume non-suspended coroutine");
@@ -575,7 +575,7 @@ static int resume_error (lua_State *L, const char *msg) {
   lua_assert(cast(StkId, ud) >= L->base);
   old_nCcalls = L->nCcalls;
   for (;;) {
-    L->baseCcalls = (L->nCcalls = (old_nCcalls & ~7) + 8);
+    L->baseCcalls = (L->nCcalls = (old_nCcalls & ~15) + 16);
     if (!L->ci->allowhook) L->nCcalls |= LUA_NOHOOKS;
     status = luaD_rawrunprotected(L, pf, ud);
     if (status <= LUA_YIELD)
@@ -588,7 +588,7 @@ static int resume_error (lua_State *L, const char *msg) {
     pf = f_continue;
     ud = (void *)(ptrdiff_t)0;  /* (void *)saveci(L, L->base_ci); */
    }
-  L->baseCcalls = L->nCcalls = ((old_nCcalls & ~7)) | LUA_NOYIELD | LUA_NOVPCALL;
+  L->baseCcalls = L->nCcalls = ((old_nCcalls & ~15)) | LUA_NOYIELD | LUA_NOVPCALL;
   L->status = status;
    lua_unlock(L);
    return status;
