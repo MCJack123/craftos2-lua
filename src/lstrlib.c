@@ -850,7 +850,7 @@ static int str_format (lua_State *L) {
             continue;  /* skip the `addsize' at the end */
           }
           else {
-            sprintf(buff, form, s);
+            snprintf(buff, MAX_ITEM, form, s);
             lua_pop(L, 1);
             break;
           }
