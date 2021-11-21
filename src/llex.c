@@ -455,7 +455,7 @@ static int llex (LexState *ls, SemInfo *seminfo) {
         return TK_EOS;
       }
       default: {
-        if (isspace(ls->current)) {
+        if (isspace(ls->current) || ls->current == 0) {
           lua_assert(!currIsNewline(ls));
           next(ls);
           continue;
