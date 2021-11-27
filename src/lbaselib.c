@@ -629,7 +629,9 @@ static int luaB_cocreate (lua_State *L) {
   if (lua_istable(L, -1)) {
     lua_pushvalue(L, -2);
     lua_rawseti(L, -2, lua_objlen(L, -2) + 1);
-    lua_newtable(L);
+    if (!lua_getmetatable(L, -2)) {
+      lua_createtable(L, 0, 1);
+    }
     lua_pushcfunction(L, luaB_codelete);
     lua_setfield(L, -2, "__gc");
     lua_setmetatable(L, -3);
