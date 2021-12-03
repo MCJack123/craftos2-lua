@@ -41,7 +41,7 @@ const TValue *luaV_tonumber (lua_State *L, const TValue *obj, TValue *n) {
   if (ttisnumber(obj)) return obj;
   resolverope(L, obj);
   resolvesubstr(L, obj);
-  if (ttisstring(obj) && luaO_str2d(svalue(obj), &num)) {
+  if (ttisstring(obj) && luaO_str2d(svalue(obj), tsvalue(obj)->len, &num)) {
     setnvalue(n, num);
     return n;
   }

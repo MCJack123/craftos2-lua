@@ -183,7 +183,7 @@ static void trydecpoint (LexState *ls, SemInfo *seminfo) {
   char old = ls->decpoint;
   ls->decpoint = (cv ? cv->decimal_point[0] : '.');
   buffreplace(ls, old, ls->decpoint);  /* try updated decimal separator */
-  if (!luaO_str2d(luaZ_buffer(ls->buff), &seminfo->r)) {
+  if (!luaO_str2d(luaZ_buffer(ls->buff), luaZ_sizebuffer(ls->buff), &seminfo->r)) {
     /* format error with correct decimal point: no more options */
     buffreplace(ls, ls->decpoint, '.');  /* undo change (for error message) */
     luaX_lexerror(ls, "malformed number", TK_NUMBER);
@@ -193,17 +193,22 @@ static void trydecpoint (LexState *ls, SemInfo *seminfo) {
 
 /* LUA_NUMBER */
 static void read_numeral (LexState *ls, SemInfo *seminfo) {
+  const char *expo = "Ee";
+  int first = ls->current;
   lua_assert(isdigit(ls->current));
-  do {
-    save_and_next(ls);
-  } while (isdigit(ls->current) || ls->current == '.');
-  if (check_next(ls, "Ee"))  /* `E'? */
-    check_next(ls, "+-");  /* optional exponent sign */
-  while (isalnum(ls->current) || ls->current == '_')
-    save_and_next(ls);
+  save_and_next(ls);
+  if (first == '0' && check_next(ls, "Xx"))  /* hexadecimal? */
+    expo = "Pp";
+  for (;;) {
+    if (check_next(ls, expo))  /* exponent part? */
+      check_next(ls, "+-");  /* optional exponent sign */
+    if (isxdigit(ls->current) || ls->current == '.')
+      save_and_next(ls);
+    else  break;
+  }
   save(ls, '\0');
   buffreplace(ls, '.', ls->decpoint);  /* follow locale for decimal point */
-  if (!luaO_str2d(luaZ_buffer(ls->buff), &seminfo->r))  /* format error? */
+  if (!luaO_str2d(luaZ_buffer(ls->buff), luaZ_bufflen(ls->buff) - 1, &seminfo->r))  /* format error? */
     trydecpoint(ls, seminfo); /* try to update decimal point separator */
 }
 
