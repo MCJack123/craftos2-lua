@@ -225,7 +225,7 @@ static int l_strcmp (const TString *ls, const TString *rs) {
   const char *r = getstr(rs);
   size_t lr = rs->tsv.len;
   for (;;) {
-    int temp = strcoll(l, r);
+    int temp = strcmp(l, r);
     if (temp != 0) return temp;
     else {  /* strings are equal up to a `\0' */
       size_t len = strlen(l);  /* index of first `\0' in both strings */
@@ -247,7 +247,6 @@ static int l_substrcmp (const TSubString *ls, const TSubString *rs) {
   const char *r = getstr(rs->tss.str) + rs->tss.offset;
   size_t lr = rs->tss.len;
   for (;;) {
-    /* Unfortunately we cannot use strcoll here due to length, so use standard strncmp. */
     int temp = strncmp(l, r, lr > ll ? ll : lr);
     if (temp != 0) return temp;
     else {  /* strings are equal up to a `\0' */
