@@ -250,6 +250,7 @@ typedef union TRope {
     union TRope * left;
     union TRope * right;
     size_t len;
+    TString *res;
   } tsr;
 } TRope;
 

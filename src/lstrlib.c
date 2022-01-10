@@ -105,13 +105,18 @@ static int str_upper (lua_State *L) {
 
 static int str_rep (lua_State *L) {
   size_t l;
-  luaL_Buffer b;
+  char * str;
+  void * ud;
   const char *s = luaL_checklstring(L, 1, &l);
-  int n = luaL_checkint(L, 2);
-  luaL_buffinit(L, &b);
-  while (n-- > 0)
-    luaL_addlstring(&b, s, l);
-  luaL_pushresult(&b);
+  int n = luaL_checkint(L, 2), i;
+  if (n == 0) lua_pushliteral(L, "");
+  else if (n == 1) lua_pushvalue(L, 1);
+  else {
+    str = lua_getallocf(L, &ud)(ud, NULL, 0, l * n);
+    for (i = 0; i < n; i++) memcpy(str + (i * l), s, l);
+    lua_pushlstring(L, str, l * n);
+    lua_getallocf(L, &ud)(ud, str, l * n, 0);
+  }
   return 1;
 }
 

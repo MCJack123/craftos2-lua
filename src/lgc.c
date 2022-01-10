@@ -287,6 +287,7 @@ static void traverserope (global_State *g, TRope *r) {
     if (r->tsr.right->tsr.tt == LUA_TSTRING) stringmark(cast(TString *, r->tsr.right));
     else markobject(g, r->tsr.right);
   }
+  if (r->tsr.res) stringmark(r->tsr.res);
 }
 
 

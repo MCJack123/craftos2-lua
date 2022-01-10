@@ -117,6 +117,7 @@ TRope *luaS_concat (lua_State *L, TRope *l, TRope *r) {
   rope->tsr.right = r;
   rope->tsr.len = (l->tsr.tt == LUA_TSTRING ? cast(TString *, l)->tsv.len : (l->tsr.tt == LUA_TSUBSTR ? cast(TSubString *, l)->tss.len : l->tsr.len)) +
                   (r->tsr.tt == LUA_TSTRING ? cast(TString *, r)->tsv.len : (r->tsr.tt == LUA_TSUBSTR ? cast(TSubString *, r)->tss.len : r->tsr.len));
+  rope->tsr.res = NULL;
   return rope;
 }
 
@@ -125,6 +126,7 @@ TString *luaS_build (lua_State *L, TRope *rope) {
   TString *s;
   TRope **stack;
   if (rope->tsr.tt == LUA_TSTRING || rope->tsr.tt == LUA_TSUBSTR) return cast(TString *, rope);
+  if (rope->tsr.res) return rope->tsr.res;
   buffer = cur = luaZ_openspace(L, &G(L)->buff, rope->tsr.len);
   stack = G(L)->ropestack;
   do {
@@ -161,6 +163,7 @@ TString *luaS_build (lua_State *L, TRope *rope) {
     rope = rope->tsr.right;
   } while (stack >= G(L)->ropestack);
   s = luaS_newlstr(L, buffer, cur - buffer);
+  rope->tsr.res = s;
   return s;
 }
 
