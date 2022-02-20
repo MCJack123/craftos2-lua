@@ -51,20 +51,19 @@ const TValue *luaV_tonumber (lua_State *L, const TValue *obj, TValue *n) {
 
 
 int luaV_tostring (lua_State *L, StkId obj) {
-  if (ttisrope(obj) || ttissubstr(obj)) {
+  if (ttisrope(obj)) {
     resolverope(L, obj);
+    return 1;
+  } else if (ttissubstr(obj)) {
     resolvesubstr(L, obj);
     return 1;
-  }
-  else if (!ttisnumber(obj))
-    return 0;
-  else {
+  } else if (ttisnumber(obj)) {
     char s[LUAI_MAXNUMBER2STR];
     lua_Number n = nvalue(obj);
     lua_number2str(s, n);
     setsvalue2s(L, obj, luaS_new(L, s));
     return 1;
-  }
+  } else return 0;
 }
 
 
@@ -554,7 +553,12 @@ int luaV_execute (lua_State *L) {
       int c=GETARG_C(i);
       int bx=GETARG_Bx(i);
       int sbx=GETARG_sBx(i);
-      int line=getline(cl->p,pc - cl->p->code);
+      int line;
+      if (pc - cl->p->code >= cl->p->sizecode) {
+        printf("\t%d\t[-]\tOVERFLOW (!)\n", pc - cl->p->code + 1);
+        goto debugend;
+      }
+      line=getline(cl->p,pc - cl->p->code);
       printf("\t%d\t",pc-cl->p->code+1);
       if (line>0) printf("[%d]\t",line); else printf("[-]\t");
       printf("%-9s\t",luaP_opnames[o]);
@@ -622,6 +626,7 @@ int luaV_execute (lua_State *L) {
         break;
       }
       printf("\n");
+      debugend:
     }
 #endif
     switch (GET_OPCODE(i)) {

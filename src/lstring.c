@@ -164,6 +164,10 @@ TString *luaS_build (lua_State *L, TRope *rope) {
   } while (stack >= G(L)->ropestack);
   s = luaS_newlstr(L, buffer, cur - buffer);
   rope->tsr.res = s;
+  /* mark the string as black so it doesn't accidentally get freed */
+  /* (apparently this is a problem?) */
+  resetbits(s->tsv.marked, WHITEBITS);
+  setbits(s->tsv.marked, bitmask(BLACKBIT));
   return s;
 }
 

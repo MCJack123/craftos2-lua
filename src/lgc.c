@@ -377,7 +377,7 @@ static int iscleared (global_State *g, const TValue *o, int iskey) {
   if (ttisstring(o)) {
     stringmark(rawtsvalue(o));  /* strings are `values', so are never weak */
     return 0;
-  } else if (ttisrope(o)) {
+  } else if (ttisrope(o) || ttissubstr(o)) {
     markobject(g, o);  /* ropes are strings -> which are values, so are never weak either */
     return 0;
   }
