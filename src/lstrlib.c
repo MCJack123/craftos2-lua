@@ -112,10 +112,10 @@ static int str_rep (lua_State *L) {
   if (n == 0) lua_pushliteral(L, "");
   else if (n == 1) lua_pushvalue(L, 1);
   else {
-    str = lua_getallocf(L, &ud)(ud, NULL, 0, l * n);
-    for (i = 0; i < n; i++) memcpy(str + (i * l), s, l);
+    str = luaM_newvector(L, l * n, char);
+    for (i = 0; i < l*n; i+=l) memcpy(str + i, s, l);
     lua_pushlstring(L, str, l * n);
-    lua_getallocf(L, &ud)(ud, str, l * n, 0);
+    luaM_free(L, str);
   }
   return 1;
 }
