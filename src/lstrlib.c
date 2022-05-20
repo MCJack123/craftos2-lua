@@ -109,7 +109,7 @@ static int str_rep (lua_State *L) {
   void * ud;
   const char *s = luaL_checklstring(L, 1, &l);
   int n = luaL_checkint(L, 2), i;
-  if (n == 0) lua_pushliteral(L, "");
+  if (n <= 0) lua_pushliteral(L, "");
   else if (n == 1) lua_pushvalue(L, 1);
   else {
     str = luaM_newvector(L, l * n, char);
