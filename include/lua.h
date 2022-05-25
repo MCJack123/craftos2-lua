@@ -391,6 +391,7 @@ struct lua_Debug {
   char short_src[LUA_IDSIZE]; /* (S) */
   /* private part */
   int i_ci;  /* active function */
+  int instruction;  /* (i) current instruction offset */
 };
 
 /* }====================================================================== */
