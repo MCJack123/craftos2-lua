@@ -741,35 +741,49 @@ LUALIB_API const char *luaL_checklstring_nil(lua_State *L, int narg, size_t *len
 
 static void addquoted (lua_State *L, luaL_Buffer *b, int arg) {
   size_t l;
-  if (lua_isnil(L, arg)) {
+  const char *s;
+  switch (lua_type(L, arg)) {
+  case LUA_TNIL:
     luaL_addstring(b, "nil");
-    return;
-  }
-  const char *s = luaL_checklstring(L, arg, &l);
-  luaL_addchar(b, '"');
-  while (l--) {
-    switch (*s) {
-      case '"': case '\\': case '\n': {
-        luaL_addchar(b, '\\');
-        luaL_addchar(b, *s);
-        break;
+    break;
+  case LUA_TBOOLEAN:
+    luaL_addstring(b, lua_toboolean(L, arg) ? "true" : "false");
+    break;
+  case LUA_TNUMBER:
+    s = luaL_tolstring(L, arg, &l); /* pushes the string version to the top of the stack */
+    luaL_addlstring(b, s, l);
+    break;
+  case LUA_TSTRING: {
+    s = luaL_tolstring(L, arg, &l);
+    luaL_addchar(b, '"');
+    while (l--) {
+      switch (*s) {
+        case '"': case '\\': case '\n': {
+          luaL_addchar(b, '\\');
+          luaL_addchar(b, *s);
+          break;
+        }
+        case '\r': {
+          luaL_addlstring(b, "\\r", 2);
+          break;
+        }
+        case '\0': {
+          luaL_addlstring(b, "\\000", 4);
+          break;
+        }
+        default: {
+          luaL_addchar(b, *s);
+          break;
+        }
       }
-      case '\r': {
-        luaL_addlstring(b, "\\r", 2);
-        break;
-      }
-      case '\0': {
-        luaL_addlstring(b, "\\000", 4);
-        break;
-      }
-      default: {
-        luaL_addchar(b, *s);
-        break;
-      }
+      s++;
     }
-    s++;
+    luaL_addchar(b, '"');
+    break;
   }
-  luaL_addchar(b, '"');
+  default:
+    luaL_argerror(L, arg, "value has no literal form");
+  }
 }
 
 static const char *scanformat (lua_State *L, const char *strfrmt, char *form) {
