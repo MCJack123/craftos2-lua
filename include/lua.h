@@ -392,6 +392,7 @@ struct lua_Debug {
   /* private part */
   int i_ci;  /* active function */
   int instruction;  /* (i) current instruction offset */
+  int istailcall;  /* (t) whether the stack entry is a tail call */
 };
 
 /* }====================================================================== */

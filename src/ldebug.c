@@ -228,6 +228,10 @@ static int auxgetinfo (lua_State *L, const char *what, lua_Debug *ar,
         }
         break;
       }
+      case 't': {
+        ar->istailcall = (ci) ? ci->tailcalls > 0 : 0;
+        break;
+      }
       case 'n': {
         ar->namewhat = (ci) ? getfuncname(L, ci, &ar->name) : NULL;
         if (ar->namewhat == NULL) {

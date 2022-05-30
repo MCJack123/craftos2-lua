@@ -134,6 +134,10 @@ static int db_getinfo (lua_State *L) {
     lua_pushboolean(L, ar.isvararg);
     lua_setfield(L, -2, "isvararg");
   }
+  if (strchr(options, 't')) {
+    lua_pushboolean(L, ar.istailcall);
+    lua_setfield(L, -2, "istailcall");
+  }
   if (strchr(options, 'n')) {
     settabss(L, "name", ar.name);
     settabss(L, "namewhat", ar.namewhat);
