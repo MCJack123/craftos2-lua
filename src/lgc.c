@@ -345,13 +345,13 @@ static l_mem propagatemark (global_State *g) {
       TRope *r = rawgco2tr(o);
       g->gray = r->tsr.gclist;
       traverserope(g, r);
-      return sizeof(TRope);
+      return sizeof(TRope) + r->tsr.len;
     }
     case LUA_TSUBSTR: {
       TSubString *ss = rawgco2ss(o);
       g->gray = ss->tss.gclist;
       traversesubstr(g, ss);
-      return sizeof(TSubString);
+      return sizeof(TSubString) + ss->tss.str->tsv.len;
     }
     default: lua_assert(0); return 0;
   }

@@ -125,13 +125,14 @@ TString *luaS_build (lua_State *L, TRope *rope) {
   char *buffer, *cur;
   TString *s;
   TRope **stack;
+  TRope *orig = rope;
   if (rope->tsr.tt == LUA_TSTRING || rope->tsr.tt == LUA_TSUBSTR) return cast(TString *, rope);
-  if (rope->tsr.res) return rope->tsr.res;
-  buffer = cur = luaZ_openspace(L, &G(L)->buff, rope->tsr.len);
+  if (rope->tsr.res || rope->tsr.left == NULL || rope->tsr.right == NULL) return rope->tsr.res;
+  buffer = cur = luaM_newvector(L, rope->tsr.len, char);
   stack = G(L)->ropestack;
   do {
     int b = 0;
-    while (rope->tsr.left->tsr.tt == LUA_TROPE) {
+    while (rope->tsr.left->tsr.tt == LUA_TROPE && rope->tsr.left->tsr.res == NULL) {
       if (stack - G(L)->ropestack == G(L)->ropestacksize - 1) {
         TRope **oldbase = G(L)->ropestack;
         luaM_reallocvector(L, G(L)->ropestack, G(L)->ropestacksize, G(L)->ropestacksize + G(L)->ropestacksize, TRope *);
@@ -144,17 +145,23 @@ TString *luaS_build (lua_State *L, TRope *rope) {
     if (rope->tsr.left->tsr.tt == LUA_TSUBSTR) {
       memcpy(cur, getstr(cast(TSubString *, rope->tsr.left)->tss.str) + cast(TSubString *, rope->tsr.left)->tss.offset, cast(TSubString *, rope->tsr.left)->tss.len);
       cur += cast(TSubString *, rope->tsr.left)->tss.len;
-    } else {
+    } else if (rope->tsr.left->tsr.tt == LUA_TSTRING) {
       memcpy(cur, getstr(cast(TString *, rope->tsr.left)), cast(TString *, rope->tsr.left)->tsv.len);
       cur += cast(TString *, rope->tsr.left)->tsv.len;
+    } else {
+      memcpy(cur, getstr(rope->tsr.left->tsr.res), rope->tsr.left->tsr.res->tsv.len);
+      cur += rope->tsr.left->tsr.res->tsv.len;
     }
-    while (rope->tsr.right->tsr.tt == LUA_TSTRING || rope->tsr.right->tsr.tt == LUA_TSUBSTR) {
+    while (rope->tsr.right->tsr.tt == LUA_TSTRING || rope->tsr.right->tsr.tt == LUA_TSUBSTR || rope->tsr.right->tsr.res) {
       if (rope->tsr.right->tsr.tt == LUA_TSUBSTR) {
         memcpy(cur, getstr(cast(TSubString *, rope->tsr.right)->tss.str) + cast(TSubString *, rope->tsr.right)->tss.offset, cast(TSubString *, rope->tsr.right)->tss.len);
         cur += cast(TSubString *, rope->tsr.right)->tss.len;
-      } else {
+      } else if (rope->tsr.right->tsr.tt == LUA_TSTRING) {
         memcpy(cur, getstr(cast(TString *, rope->tsr.right)), cast(TString *, rope->tsr.right)->tsv.len);
         cur += cast(TString *, rope->tsr.right)->tsv.len;
+      } else {
+        memcpy(cur, getstr(rope->tsr.right->tsr.res), rope->tsr.right->tsr.res->tsv.len);
+        cur += rope->tsr.right->tsr.res->tsv.len;
       }
       if (stack <= G(L)->ropestack) {b = 1; break;}
       rope = *--stack;
@@ -163,7 +170,8 @@ TString *luaS_build (lua_State *L, TRope *rope) {
     rope = rope->tsr.right;
   } while (stack >= G(L)->ropestack);
   s = luaS_newlstr(L, buffer, cur - buffer);
-  rope->tsr.res = s;
+  orig->tsr.res = s;
+  orig->tsr.left = orig->tsr.right = NULL;  /* release left & right nodes (we don't need them anymore) */
   /* mark the string as black so it doesn't accidentally get freed */
   /* (apparently this is a problem?) */
   resetbits(s->tsv.marked, WHITEBITS);
