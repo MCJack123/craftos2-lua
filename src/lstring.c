@@ -18,6 +18,8 @@
 #include "lstring.h"
 
 
+#define ROPE_ALLOC_MIN_SIZE 32768
+
 
 void luaS_resize (lua_State *L, int newsize) {
   GCObject **newhash;
@@ -128,7 +130,8 @@ TString *luaS_build (lua_State *L, TRope *rope) {
   TRope *orig = rope;
   if (rope->tsr.tt == LUA_TSTRING || rope->tsr.tt == LUA_TSUBSTR) return cast(TString *, rope);
   if (rope->tsr.res || rope->tsr.left == NULL || rope->tsr.right == NULL) return rope->tsr.res;
-  buffer = cur = luaM_newvector(L, rope->tsr.len, char);
+  if (rope->tsr.len >= ROPE_ALLOC_MIN_SIZE) buffer = cur = luaM_newvector(L, rope->tsr.len, char);
+  else buffer = cur = luaZ_openspace(L, &G(L)->buff, rope->tsr.len);
   stack = G(L)->ropestack;
   do {
     int b = 0;
@@ -170,6 +173,7 @@ TString *luaS_build (lua_State *L, TRope *rope) {
     rope = rope->tsr.right;
   } while (stack >= G(L)->ropestack);
   s = luaS_newlstr(L, buffer, cur - buffer);
+  if (orig->tsr.len >= ROPE_ALLOC_MIN_SIZE) luaM_free(L, buffer);
   orig->tsr.res = s;
   orig->tsr.left = orig->tsr.right = NULL;  /* release left & right nodes (we don't need them anymore) */
   /* mark the string as black so it doesn't accidentally get freed */
