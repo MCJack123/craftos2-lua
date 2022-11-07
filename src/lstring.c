@@ -180,6 +180,7 @@ TString *luaS_build (lua_State *L, TRope *rope) {
   /* (apparently this is a problem?) */
   resetbits(s->tsv.marked, WHITEBITS);
   setbits(s->tsv.marked, bitmask(BLACKBIT));
+  luaC_step(L);  /* try to let the old rope get freed */
   return s;
 }
 

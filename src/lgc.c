@@ -187,7 +187,7 @@ static int traversetable (global_State *g, Table *h) {
   if (weakkey && weakvalue) return 1;
   i = h->sizearray;
   while (i--)
-    if (!weakvalue || ttisrope(&h->array[i]) || ttissubstr(&h->array[i])) markvalue(g, &h->array[i]);
+    if (!weakvalue) markvalue(g, &h->array[i]);
   i = sizenode(h);
   while (i--) {
     Node *n = gnode(h, i);
@@ -196,8 +196,8 @@ static int traversetable (global_State *g, Table *h) {
       removeentry(n);  /* remove empty entries */
     else {
       lua_assert(!ttisnil(gkey(n)));
-      if (!weakkey || ttisrope(gkey(n)) || ttissubstr(gkey(n))) markvalue(g, gkey(n));
-      if (!weakvalue || ttisrope(gval(n)) || ttissubstr(gval(n))) markvalue(g, gval(n));
+      if (!weakkey) markvalue(g, gkey(n));
+      if (!weakvalue) markvalue(g, gval(n));
     }
   }
   return weakkey || weakvalue;
