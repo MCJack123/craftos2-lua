@@ -105,6 +105,10 @@ typedef struct global_State {
   const char * haltmessage;  /* if haltstate is 2, a message to show as the error message */
   TRope **ropestack;  /* temporary stack used to store ropes when constructing strings */
   int ropestacksize;  /* size of above stack */
+  TRope *ropeclusters;  /* pointer to first node of rope cluster list */
+  TRope *ropefreecluster;  /* pointer to first potentially free cluster */
+  TSubString *ssclusters;  /* pointer to first node of rope cluster list */
+  TSubString *ssfreecluster;  /* pointer to first potentially free cluster */
 } global_State;
 
 

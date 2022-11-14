@@ -247,6 +247,7 @@ typedef union TRope {
   struct {
     CommonHeader;
     GCObject *gclist;
+    union TRope *cluster;
     union TRope * left;
     union TRope * right;
     size_t len;
@@ -260,6 +261,7 @@ typedef union TSubString {
   struct {
     CommonHeader;
     GCObject *gclist;
+    union TSubString *cluster;
     TString *str;
     size_t offset;
     size_t len;

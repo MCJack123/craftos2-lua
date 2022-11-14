@@ -6,6 +6,7 @@
 
 
 #include <stddef.h>
+#include <string.h>
 
 #define lstate_c
 #define LUA_CORE
@@ -84,6 +85,16 @@ static int f_luaopen (lua_State *L, void *ud) {
   luaX_init(L);
   luaS_fix(luaS_newliteral(L, MEMERRMSG));
   g->ropestack = luaM_newvector(L, g->ropestacksize, TRope *);
+  g->ropeclusters = luaM_newvector(L, ROPE_CLUSTER_SIZE, TRope);
+  memset(g->ropeclusters, 0, ROPE_CLUSTER_SIZE * sizeof(TRope));
+  nextropecluster(g->ropeclusters) = NULL;  /* ensure next pointer is NULL */
+  ((unsigned long*)g->ropeclusters)[BITMAP_SKIP] = 0xFFFF;  /* always mark first entry as used by bitmap */
+  g->ropefreecluster = g->ropeclusters;
+  g->ssclusters = luaM_newvector(L, SUBSTR_CLUSTER_SIZE, TSubString);
+  memset(g->ssclusters, 0, SUBSTR_CLUSTER_SIZE * sizeof(TSubString));
+  nextsscluster(g->ssclusters) = NULL;  /* ensure next pointer is NULL */
+  ((unsigned long*)g->ssclusters)[BITMAP_SKIP] = 0xFFFF;  /* always mark first entry as used by bitmap */
+  g->ssfreecluster = g->ssclusters;
   g->GCthreshold = 4*g->totalbytes;
   return 0;
 }
@@ -111,6 +122,8 @@ static void preinit_state (lua_State *L, global_State *g) {
 
 static void close_state (lua_State *L) {
   global_State *g = G(L);
+  TRope *cluster = g->ropeclusters, *next;
+  TRope *sscluster = g->ssclusters, *ssnext;
   luaF_close(L, L->stack);  /* close all upvalues for this thread */
   luaC_freeall(L);  /* collect all objects */
   lua_assert(g->rootgc == obj2gco(L));
@@ -119,6 +132,16 @@ static void close_state (lua_State *L) {
   luaZ_freebuffer(L, &g->buff);
   freestack(L, L);
   luaM_freearray(L, g->ropestack, g->ropestacksize, TRope *);
+  while (cluster != NULL) {
+    next = *(TRope**)cluster;
+    luaM_free(L, cluster);
+    cluster = next;
+  }
+  while (sscluster != NULL) {
+    ssnext = *(TSubString**)sscluster;
+    luaM_free(L, sscluster);
+    sscluster = ssnext;
+  }
   lua_assert(g->totalbytes == sizeof(LG));
   if (g->lockstate) lua_unlock(L);
   _lua_freelock(g->lock);

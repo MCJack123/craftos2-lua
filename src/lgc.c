@@ -422,7 +422,7 @@ static void freeobj (lua_State *L, GCObject *o) {
     case LUA_TFUNCTION: luaF_freeclosure(L, gco2cl(o)); break;
     case LUA_TUPVAL: luaF_freeupval(L, gco2uv(o)); break;
     case LUA_TROPE: luaS_freerope(L, rawgco2tr(o)); break;
-    case LUA_TSUBSTR: luaM_free(L, rawgco2ss(o)); break;
+    case LUA_TSUBSTR: luaS_freesubstr(L, rawgco2ss(o)); break;
     case LUA_TTABLE: luaH_free(L, gco2h(o)); break;
     case LUA_TTHREAD: {
       lua_assert(gco2th(o) != L && gco2th(o) != G(L)->mainthread);
@@ -630,6 +630,7 @@ static l_mem singlestep (lua_State *L) {
       return GCSWEEPMAX*GCSWEEPCOST;
     }
     case GCSfinalize: {
+      luaS_freeclusters(L);
       if (g->tmudata) {
         GCTM(L);
         if (g->estimate > GCFINALIZECOST)

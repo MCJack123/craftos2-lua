@@ -529,9 +529,12 @@ LUA_API const char *lua_pushfstring (lua_State *L, const char *fmt, ...) {
 
 
 LUA_API const char *lua_pushsubstring (lua_State *L, int idx, size_t start, size_t len) {
-  TSubString *ss;
+  TSubString *ss = NULL;
   TString *str;
   StkId o;
+  TSubString *cluster, *next;
+  bitmap_unit *bitmap;
+  int i, j;
   lua_lock(L);
   luaC_checkGC(L);
   o = index2adr(L, idx);
@@ -550,8 +553,33 @@ LUA_API const char *lua_pushsubstring (lua_State *L, int idx, size_t start, size
       break;
     }
   }
-  ss = luaM_new(L, TSubString);
+  for (cluster = G(L)->ssfreecluster; ss == NULL; cluster = nextsscluster(cluster)) {
+    bitmap = (bitmap_unit*)cluster + BITMAP_SKIP;
+    /* search for unused entry in cluster */
+    for (i = 0; i < SUBSTR_CLUSTER_SIZE / BITMAP_UNIT_SIZE; i++) {
+      if (bitmap[i] != ULONG_MAX) {  /* empty space found? */
+        for (j = 0; j < BITMAP_UNIT_SIZE - 1; j++) {  /* if j reaches max long, then it must be unused */
+          if (!(bitmap[i] & (1 << j))) break;
+        }
+        ss = cluster + i * BITMAP_UNIT_SIZE + j;
+        bitmap[i] |= (1 << j);
+        break;
+      }
+    }
+    if (ss != NULL) break;
+    if (nextsscluster(cluster) == NULL) {  /* need new cluster? */
+      next = luaM_newvector(L, SUBSTR_CLUSTER_SIZE, TSubString);
+      memset(next, 0, SUBSTR_CLUSTER_SIZE * sizeof(TSubString));
+      nextsscluster(cluster) = next;  /* chain next cluster in list */
+      nextsscluster(next) = NULL;  /* ensure next pointer is NULL */
+      clusterid(next) = clusterid(cluster) + 1; /* set cluster number */
+      ((bitmap_unit*)next)[BITMAP_SKIP] = 0xFFFF;  /* always mark first entry as used by bitmap */
+      nextsscluster(cluster) = next;
+    }
+  }
+  G(L)->ssfreecluster = cluster;
   luaC_link(L, obj2gco(ss), LUA_TSUBSTR);
+  ss->tss.cluster = cluster;
   ss->tss.str = str;
   ss->tss.offset = start - 1;
   ss->tss.len = len;
