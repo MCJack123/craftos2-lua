@@ -471,7 +471,11 @@
 @@ LUAI_MAXCCALLS is the maximum depth for nested C calls (short) and
 @* syntactical nested non-terminals in a program.
 */
+#ifdef _WIN32
+#define LUAI_MAXCCALLS      1400
+#else
 #define LUAI_MAXCCALLS		2000
+#endif
 
 
 /*
