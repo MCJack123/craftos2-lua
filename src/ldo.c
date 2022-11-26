@@ -419,8 +419,15 @@ int luaD_precall (lua_State *L, StkId func, int nresults) {
   else {  /* if is a C function, call it */
     CallInfo *ci;
     int n;
+    functable *l;
     luaD_checkstack(L, LUA_MINSTACK);  /* ensure minimum stack size */
     if (cl->c.f == NULL) {  /* error if the function is NULL */
+      luaG_runerror(L, "attempt to call invalid C function");
+      return 0; /* prevent IntelliSense warnings */
+    }
+    l = G(L)->allowedcfuncs[((ptrdiff_t)cl->c.f >> 4) & 0xFF];  /* check if this C function is valid */
+    while (l != NULL && l->f != cl->c.f) l = l->next;
+    if (l == NULL) {
       luaG_runerror(L, "attempt to call invalid C function");
       return 0; /* prevent IntelliSense warnings */
     }

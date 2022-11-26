@@ -95,6 +95,7 @@ static int f_luaopen (lua_State *L, void *ud) {
   nextsscluster(g->ssclusters) = NULL;  /* ensure next pointer is NULL */
   ((unsigned long*)g->ssclusters)[BITMAP_SKIP] = 0xFFFF;  /* always mark first entry as used by bitmap */
   g->ssfreecluster = g->ssclusters;
+  memset(g->allowedcfuncs, 0, sizeof(g->allowedcfuncs));  /* set all funclists to NULL */
   g->GCthreshold = 4*g->totalbytes;
   return 0;
 }

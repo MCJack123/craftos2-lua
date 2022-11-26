@@ -42,6 +42,12 @@ typedef struct stringtable {
 } stringtable;
 
 
+typedef struct functable {
+  lua_CFunction f;
+  struct functable * next;
+} functable;
+
+
 /*
 ** informations about a call
 */
@@ -99,6 +105,7 @@ typedef struct global_State {
   UpVal uvhead;  /* head of double-linked list of all open upvalues */
   struct Table *mt[NUM_TAGS];  /* metatables for basic types */
   TString *tmname[TM_N];  /* array with tag-method names */
+  /* all members below this are added in craftos2-lua */
   void *lock;  /* pointer to lock */
   int lockstate;  /* 0 = unlocked, 1 = locked */
   int haltstate;  /* set to indicate state execution should be halted (1 = halt all, 2 = throw error) */
@@ -109,6 +116,7 @@ typedef struct global_State {
   TRope *ropefreecluster;  /* pointer to first potentially free cluster */
   TSubString *ssclusters;  /* pointer to first node of rope cluster list */
   TSubString *ssfreecluster;  /* pointer to first potentially free cluster */
+  functable *allowedcfuncs[256];  /* "hash map" storing allowed C functions */
 } global_State;
 
 

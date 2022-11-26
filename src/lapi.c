@@ -592,6 +592,7 @@ LUA_API const char *lua_pushsubstring (lua_State *L, int idx, size_t start, size
 
 LUA_API void lua_pushcclosure (lua_State *L, lua_CFunction fn, int n) {
   Closure *cl;
+  functable *l;
   lua_lock(L);
   luaC_checkGC(L);
   api_checknelems(L, n);
@@ -602,6 +603,20 @@ LUA_API void lua_pushcclosure (lua_State *L, lua_CFunction fn, int n) {
     setobj2n(L, &cl->c.upvalue[n], L->top+n);
   setclvalue(L, L->top, cl);
   lua_assert(iswhite(obj2gco(cl)));
+  l = G(L)->allowedcfuncs[((ptrdiff_t)fn >> 4) & 0xFF];
+  if (l == NULL) {
+    l = luaM_new(L, functable);
+    l->f = fn;
+    l->next = NULL;
+    G(L)->allowedcfuncs[((ptrdiff_t)fn >> 4) & 0xFF] = l;
+  } else {
+    while (l->next != NULL && l->f != fn) l = l->next;
+    if (l->next == NULL && l->f != fn) {
+      l->next = luaM_new(L, functable);
+      l->next->f = fn;
+      l->next->next = NULL;
+    }
+  }
   api_incr_top(L);
   lua_unlock(L);
 }
