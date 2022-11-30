@@ -599,8 +599,8 @@ static int luaB_auxwrap (lua_State *L) {
 static int luaB_codelete (lua_State *L) {
   lua_getfield(L, LUA_REGISTRYINDEX, "_coroutine_stack"); /* remove coroutine from coroutine stack */
   if (lua_istable(L, -1)) {
-    int found = 0;
-    for (int i = 1; i <= lua_objlen(L, -1); i++) {
+    int i, found = 0;
+    for (i = 1; i <= lua_objlen(L, -1); i++) {
       lua_rawgeti(L, -1, i);
       if (found) {
         lua_rawseti(L, -2, i - found);

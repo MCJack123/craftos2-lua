@@ -395,11 +395,11 @@ resume:
 /* }====================================================== */
 
 static int tpack (lua_State *L) {
-  int n = lua_gettop(L);
+  int i, n = lua_gettop(L);
   lua_createtable(L, n, 1);
   lua_pushinteger(L, n);
   lua_setfield(L, -2, "n");
-  for (int i = 1; i <= n; i++) {
+  for (i = 1; i <= n; i++) {
     lua_pushvalue(L, i);
     lua_rawseti(L, -2, i);
   }
