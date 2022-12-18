@@ -373,9 +373,9 @@ LUALIB_API int luaL_igetn (lua_State *L, int t, int ictx) {
   if (ictx != 0 && lua_icontext(L) == ictx) goto resume;
   int n;
   t = abs_index(L, t);
-  lua_pushliteral(L, "n");  /* try t.n */
+  /*lua_pushliteral(L, "n");  * try t.n *
   lua_rawget(L, t);
-  if ((n = checkint(L, 1)) >= 0) return n;
+  if ((n = checkint(L, 1)) >= 0) return n;*/
   /*getsizes(L);  * else try sizes[t] *
   lua_pushvalue(L, t);
   lua_rawget(L, -2);
