@@ -188,6 +188,12 @@ static int luaB_rawset (lua_State *L) {
   return 1;
 }
 
+static int luaB_rawlen(lua_State *L) {
+  luaL_checktype(L, 1, LUA_TTABLE);
+  lua_pushinteger(L, lua_objlen(L, 1));
+  return 1;
+}
+
 
 static int luaB_gcinfo (lua_State *L) {
   lua_pushinteger(L, lua_getgccount(L));
@@ -486,6 +492,7 @@ static const luaL_Reg base_funcs[] = {
   {"rawequal", luaB_rawequal},
   {"rawget", luaB_rawget},
   {"rawset", luaB_rawset},
+  {"rawlen", luaB_rawlen},
   {"select", luaB_select},
   {"setfenv", luaB_setfenv},
   {"setmetatable", luaB_setmetatable},
@@ -493,6 +500,7 @@ static const luaL_Reg base_funcs[] = {
   {"tostring", luaB_tostring},
   {"type", luaB_type},
   {"unpack", luaB_unpack},
+  {"__inext", ipairsaux},
   /*{"epcall", luaB_epcall},*/
   {"xpcall", luaB_xpcall},
   {NULL, NULL}
