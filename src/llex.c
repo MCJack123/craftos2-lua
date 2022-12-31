@@ -149,6 +149,11 @@ void luaX_setinput (lua_State *L, LexState *ls, ZIO *z, TString *source) {
   ls->source = source;
   luaZ_resizebuffer(ls->L, ls->buff, LUA_MINBUFFER);  /* initialize buffer */
   next(ls);  /* read first char */
+  if (ls->current == '#') {  /* skip initial shebang line to match LuaJ/Cobalt */
+    while (!currIsNewline(ls) && ls->current != EOZ) {
+      next(ls);
+    }
+  }
 }
 
 
