@@ -561,23 +561,21 @@ static int unbound_search (Table *t, unsigned int j) {
 ** such that t[i] is non-nil and t[i+1] is nil (and 0 if t[1] is nil).
 */
 int luaH_getn (Table *t) {
-  /* Algorithm from Cobalt */
-  unsigned int a = t->sizearray;
-  unsigned int n, m = 0;
-  n = a + 1;
-  while (ttype(luaH_getnum(t, n)) != LUA_TNIL) {
-    m = n;
-    n += a + sizenode(t) + 1;
-  }
-  while (n > m + 1) {
-    unsigned int k = (n + m) / 2;
-    if (ttype(luaH_getnum(t, k)) != LUA_TNIL) {
-      m = k;
-    } else {
-      n = k;
+  unsigned int j = t->sizearray;
+  if (j > 0 && ttisnil(&t->array[j - 1])) {
+    /* there is a boundary in the array part: (binary) search for it */
+    unsigned int i = 0;
+    while (j - i > 1) {
+      unsigned int m = (i+j)/2;
+      if (ttisnil(&t->array[m - 1])) j = m;
+      else i = m;
     }
+    return i;
   }
-  return m;
+  /* else must find a boundary in hash part */
+  else if (t->node == dummynode)  /* hash part is empty? */
+    return j;  /* that is easy... */
+  else return unbound_search(t, j);
 }
 
 

@@ -148,8 +148,7 @@ LUA_API lua_Number      (lua_tonumber) (lua_State *L, int idx);
 LUA_API lua_Integer     (lua_tointeger) (lua_State *L, int idx);
 LUA_API int             (lua_toboolean) (lua_State *L, int idx);
 LUA_API const char     *(lua_tolstring) (lua_State *L, int idx, size_t *len);
-LUA_API size_t          (lua_objlen) (lua_State *L, int idx); // Cobalt-compatible length
-LUA_API size_t          (lua_totalobjlen) (lua_State *L, int idx); // PUC-compatible length
+LUA_API size_t          (lua_objlen) (lua_State *L, int idx);
 LUA_API lua_CFunction   (lua_tocfunction) (lua_State *L, int idx);
 LUA_API void	       *(lua_touserdata) (lua_State *L, int idx);
 LUA_API lua_State      *(lua_tothread) (lua_State *L, int idx);
