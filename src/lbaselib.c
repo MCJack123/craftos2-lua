@@ -296,9 +296,15 @@ static int luaB_ipairs (lua_State *L) {
 }
 
 
-static int load_aux (lua_State *L, int status) {
-  if (status == 0)  /* OK? */
+static int load_aux (lua_State *L, int status, int envidx) {
+  if (status == 0) {  /* OK? */
+    if (envidx != 0) {  /* 'env' parameter? */
+      lua_pushvalue(L, envidx);  /* environment for loaded function */
+      if (!lua_setfenv(L, -2))  /* set it as 1st upvalue */
+        lua_pop(L, 1);  /* remove 'env' if not used by previous call */
+    }
     return 1;
+  }
   else {
     lua_pushnil(L);
     lua_insert(L, -2);  /* put before error message */
@@ -311,14 +317,31 @@ static int luaB_loadstring (lua_State *L) {
   size_t l;
   const char *s = luaL_checklstring(L, 1, &l);
   const char *chunkname = luaL_optstring(L, 2, s);
-  return load_aux(L, luaL_loadbuffer(L, s, l, chunkname));
+  return load_aux(L, luaL_loadbuffer(L, s, l, chunkname), 0);
 }
 
 
 static int luaB_loadfile (lua_State *L) {
   const char *fname = luaL_optstring(L, 1, NULL);
-  return load_aux(L, luaL_loadfile(L, fname));
+  const char *mode = luaL_optstring(L, 2, NULL);
+  int env = (!lua_isnone(L, 3) ? 3 : 0);  /* 'env' index or 0 if no 'env' */
+  return load_aux(L, luaL_loadfile(L, fname), env);
 }
+
+
+/*
+** {======================================================
+** Generic Read function
+** =======================================================
+*/
+
+
+/*
+** reserved slot, above all arguments, to hold a copy of the returned
+** string to avoid it being collected while parsed. 'load' has four
+** optional arguments (chunk, source name, mode, and environment).
+*/
+#define RESERVEDSLOT    5
 
 
 /*
@@ -328,31 +351,42 @@ static int luaB_loadfile (lua_State *L) {
 ** reserved slot inside the stack.
 */
 static const char *generic_reader (lua_State *L, void *ud, size_t *size) {
-  (void)ud;  /* to avoid warnings */
+  (void)(ud);  /* not used */
   luaL_checkstack(L, 2, "too many nested functions");
   lua_pushvalue(L, 1);  /* get function */
   lua_call(L, 0, 1);  /* call it */
   if (lua_isnil(L, -1)) {
+    lua_pop(L, 1);  /* pop result */
     *size = 0;
     return NULL;
   }
-  else if (lua_isstring(L, -1)) {
-    lua_replace(L, 3);  /* save string in a reserved stack slot */
-    return lua_tolstring(L, 3, size);
-  }
-  else luaL_error(L, "reader function must return a string");
-  return NULL;  /* to avoid warnings */
+  else if (!lua_isstring(L, -1))
+    luaL_error(L, "reader function must return a string");
+  lua_replace(L, RESERVEDSLOT);  /* save string in reserved slot */
+  return lua_tolstring(L, RESERVEDSLOT, size);
 }
 
 
 static int luaB_load (lua_State *L) {
   int status;
-  const char *cname = luaL_optstring(L, 2, "=(load)");
-  luaL_checktype(L, 1, LUA_TFUNCTION);
-  lua_settop(L, 3);  /* function, eventual name, plus one reserved slot */
-  status = lua_load(L, generic_reader, NULL, cname);
-  return load_aux(L, status);
+  size_t l;
+  const char *s = lua_tolstring(L, 1, &l);
+  const char *mode = luaL_optstring(L, 3, "bt");
+  int env = (!lua_isnoneornil(L, 4) ? 4 : 0);  /* 'env' index or 0 if no 'env' */
+  if (s != NULL) {  /* loading a string? */
+    const char *chunkname = luaL_optstring(L, 2, s);
+    status = luaL_loadbufferx(L, s, l, chunkname, mode);
+  }
+  else {  /* loading from a reader function */
+    const char *chunkname = luaL_optstring(L, 2, "=(load)");
+    luaL_checktype(L, 1, LUA_TFUNCTION);
+    lua_settop(L, RESERVEDSLOT);  /* create reserved slot */
+    status = lua_load52(L, generic_reader, NULL, chunkname, mode);
+  }
+  return load_aux(L, status, env);
 }
+
+/* }====================================================== */
 
 
 static int luaB_dofile (lua_State *L) {

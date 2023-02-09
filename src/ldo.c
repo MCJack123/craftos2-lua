@@ -625,7 +625,16 @@ struct SParser {  /* data to `f_parser' */
   ZIO *z;
   Mbuffer buff;  /* buffer to be used by the scanner */
   const char *name;
+  const char *mode;
 };
+
+static void checkmode (lua_State *L, const char *mode, const char *x) {
+  if (mode && strchr(mode, x[0]) == NULL) {
+    luaO_pushfstring(L,
+       "attempt to load a %s chunk (mode is " LUA_QS ")", x, mode);
+    luaD_throw(L, LUA_ERRSYNTAX);
+  }
+}
 
 static int f_parser (lua_State *L, void *ud) {
   int i;
@@ -635,8 +644,14 @@ static int f_parser (lua_State *L, void *ud) {
   int c = luaZ_lookahead(p->z);
   L->nCcalls |= (LUA_NOYIELD | LUA_NOVPCALL);  /* parser is not resumable */
   luaC_checkGC(L);
-  tf = ((c == LUA_SIGNATURE[0]) ? luaU_undump : luaY_parser)(L, p->z,
-                                                             &p->buff, p->name);
+  if (c == LUA_SIGNATURE[0]) {
+    checkmode(L, p->mode, "b");
+    tf = luaU_undump(L, p->z, &p->buff, p->name);
+  }
+  else {
+    checkmode(L, p->mode, "t");
+    tf = luaY_parser(L, p->z, &p->buff, p->name);
+  }
   cl = luaF_newLclosure(L, tf->nups, hvalue(gt(L)));
   cl->l.p = tf;
   for (i = 0; i < tf->nups; i++)  /* initialize eventual upvalues */
@@ -647,10 +662,10 @@ static int f_parser (lua_State *L, void *ud) {
 }
 
 
-int luaD_protectedparser (lua_State *L, ZIO *z, const char *name) {
+int luaD_protectedparser (lua_State *L, ZIO *z, const char *name, const char *mode) {
   struct SParser p;
   int status;
-  p.z = z; p.name = name;
+  p.z = z; p.name = name; p.mode = mode;
   luaZ_initbuffer(L, &p.buff);
   status = luaD_pcall(L, f_parser, &p, savestack(L, L->top),
                       -1, ~0);  /* -1 = inherit errfunc */
