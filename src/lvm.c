@@ -268,6 +268,10 @@ int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
   int res;
   resolverope(L, l);
   resolverope(L, r);
+  if (ttissubstr(l) != ttissubstr(r)) {
+    resolvesubstr(L, l);
+    resolvesubstr(L, r);
+  }
   if (ttype(l) != ttype(r))
     return luaG_ordererror(L, l, r);
   else if (ttisnumber(l))
@@ -286,6 +290,10 @@ static int lessequal (lua_State *L, const TValue *l, const TValue *r) {
   int res;
   resolverope(L, l);
   resolverope(L, r);
+  if (ttissubstr(l) != ttissubstr(r)) {
+    resolvesubstr(L, l);
+    resolvesubstr(L, r);
+  }
   if (ttype(l) != ttype(r))
     return luaG_ordererror(L, l, r);
   else if (ttisnumber(l))
