@@ -645,11 +645,11 @@ static int f_parser (lua_State *L, void *ud) {
   L->nCcalls |= (LUA_NOYIELD | LUA_NOVPCALL);  /* parser is not resumable */
   luaC_checkGC(L);
   if (c == LUA_SIGNATURE[0]) {
-    checkmode(L, p->mode, "b");
+    checkmode(L, p->mode, "binary");
     tf = luaU_undump(L, p->z, &p->buff, p->name);
   }
   else {
-    checkmode(L, p->mode, "t");
+    checkmode(L, p->mode, "text");
     tf = luaY_parser(L, p->z, &p->buff, p->name);
   }
   cl = luaF_newLclosure(L, tf->nups, hvalue(gt(L)));
