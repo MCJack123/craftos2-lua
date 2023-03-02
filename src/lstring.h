@@ -13,8 +13,8 @@
 #include "lstate.h"
 
 
-#define ROPE_CLUSTER_SIZE ((sizeof(TRope) * 16 - sizeof(void*) - sizeof(bitmap_unit)) * 8)
-#define SUBSTR_CLUSTER_SIZE ((sizeof(TSubString) * 16 - sizeof(void*) - sizeof(bitmap_unit)) * 8)
+#define ROPE_CLUSTER_SIZE ((sizeof(TRope) * 16 - sizeof(void*) * 2) * 8)
+#define SUBSTR_CLUSTER_SIZE ((sizeof(TSubString) * 16 - sizeof(void*) * 2) * 8)
 #define BITMAP_UNIT_SIZE (sizeof(bitmap_unit) * 8)
 #define BITMAP_SKIP (sizeof(void*) / sizeof(bitmap_unit) * 2)
 

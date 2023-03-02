@@ -268,6 +268,7 @@ static void freessclusters (lua_State *L) {
   for (cluster = G(L)->ssclusters; cluster != NULL; last = cluster, cluster = nextsscluster(cluster)) {
     bitmap = (bitmap_unit*)cluster + BITMAP_SKIP;
     empty = (bitmap[0] & ~(bitmap_unit)(0xFFFF)) == 0;  /* ignore first entry use bit */
+    full = bitmap[0] == ULONG_MAX;  /* ignore first entry use bit */
     for (i = 1; i < SUBSTR_CLUSTER_SIZE / BITMAP_UNIT_SIZE && (empty || full); i++) {
       if (bitmap[i]) {  /* any entry in use? */
         empty = 0;
