@@ -104,17 +104,22 @@ static int str_upper (lua_State *L) {
 }
 
 static int str_rep (lua_State *L) {
-  size_t l;
+  size_t l, sl;
   char * str;
   void * ud;
   const char *s = luaL_checklstring(L, 1, &l);
   int n = luaL_checkint(L, 2), i;
+  const char *sep = luaL_optlstring(L, 3, "", &sl);
   if (n <= 0) lua_pushliteral(L, "");
   else if (n == 1) lua_pushvalue(L, 1);
   else {
-    str = luaM_newvector(L, l * n, char);
-    for (i = 0; i < l*n; i+=l) memcpy(str + i, s, l);
-    lua_pushlstring(L, str, l * n);
+    str = luaM_newvector(L, l * n + sl * (n - 1), char);
+    memcpy(str, s, l);
+    for (i = l; i < l*n + sl*(n-1); i+=l+sl) {
+      if (sl > 0) memcpy(str + i, sep, sl);
+      memcpy(str + i + sl, s, l);
+    }
+    lua_pushlstring(L, str, l * n + sl * (n - 1));
     luaM_free(L, str);
   }
   return 1;

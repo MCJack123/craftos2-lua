@@ -207,8 +207,10 @@ TString *luaS_build (lua_State *L, TRope *rope) {
   orig->tsr.left = orig->tsr.right = NULL;  /* release left & right nodes (we don't need them anymore) */
   /* mark the string as black so it doesn't accidentally get freed */
   /* (apparently this is a problem?) */
-  resetbits(s->tsv.marked, WHITEBITS);
-  setbits(s->tsv.marked, bitmask(BLACKBIT));
+  if (orig->tsr.marked & bitmask(BLACKBIT)) {
+    resetbits(s->tsv.marked, WHITEBITS);
+    setbits(s->tsv.marked, bitmask(BLACKBIT));
+  }
   luaC_step(L);  /* try to let the old rope get freed */
   return s;
 }
