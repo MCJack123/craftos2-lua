@@ -464,8 +464,9 @@ static int luaB_epcall (lua_State *L) {
 static int luaB_xpcall (lua_State *L) {  /* for compatibility only */
   if (lua_icontext(L) == 0) {
     luaL_checkany(L, 2);
-    lua_settop(L, 2);
+    lua_pushvalue(L, 2);
     lua_insert(L, 1);  /* put error function under function to be called */
+    lua_remove(L, 3);
   }
   return aux_pcall(L, 1);
 }
@@ -530,7 +531,7 @@ static const luaL_Reg base_funcs[] = {
   {"unpack", tunpack},
   {"__inext", ipairsaux},
   /*{"epcall", luaB_epcall},*/
-  {"xpcall", luaB_epcall},
+  {"xpcall", luaB_xpcall},
   {NULL, NULL}
 };
 
