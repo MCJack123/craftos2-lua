@@ -447,6 +447,60 @@ LUALIB_API const char *luaL_findtable (lua_State *L, int idx,
 }
 
 
+LUALIB_API void luaL_igeti (lua_State *L, int idx, int n, int ctx) {
+  lua_rawgeti(L, idx, n);
+  if (lua_isnil(L, -1) && luaL_getmetafield(L, idx, "__index")) {
+    lua_remove(L, -2);
+    lua_pushvalue(L, idx);
+    lua_pushinteger(L, n);
+    lua_icall(L, 2, 1, ctx);
+  }
+}
+
+
+LUALIB_API void luaL_vgeti (lua_State *L, int idx, int n, void *ctx) {
+  lua_rawgeti(L, idx, n);
+  if (lua_isnil(L, -1) && luaL_getmetafield(L, idx, "__index")) {
+    lua_remove(L, -2);
+    lua_pushvalue(L, idx);
+    lua_pushinteger(L, n);
+    lua_vcall(L, 2, 1, ctx);
+  }
+}
+
+
+LUALIB_API void luaL_iseti (lua_State *L, int idx, int n, int ctx) {
+  lua_rawgeti(L, idx, n);
+  if (lua_isnil(L, -1) && luaL_getmetafield(L, idx, "__newindex")) {
+    lua_remove(L, -2);
+    lua_pushvalue(L, idx);
+    lua_pushinteger(L, n);
+    lua_pushvalue(L, -4);
+    lua_remove(L, -5);
+    lua_icall(L, 3, 0, ctx);
+  } else {
+    lua_pop(L, 1);
+    lua_rawseti(L, idx, n);
+  }
+}
+
+
+LUALIB_API void luaL_vseti (lua_State *L, int idx, int n, void *ctx) {
+  lua_rawgeti(L, idx, n);
+  if (lua_isnil(L, -1) && luaL_getmetafield(L, idx, "__newindex")) {
+    lua_remove(L, -2);
+    lua_pushvalue(L, idx);
+    lua_pushinteger(L, n);
+    lua_pushvalue(L, -4);
+    lua_remove(L, -5);
+    lua_vcall(L, 3, 0, ctx);
+  } else {
+    lua_pop(L, 1);
+    lua_rawseti(L, idx, n);
+  }
+}
+
+
 
 /*
 ** {======================================================

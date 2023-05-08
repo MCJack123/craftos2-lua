@@ -264,7 +264,6 @@ static int io_lines (lua_State *L) {
     return f_lines(L);
   }
   else {
-    int i;
     const char *filename = luaL_checkstring_(L, 1);
     FILE **pf = newfile(L);
     *pf = fopen(filename, "r");

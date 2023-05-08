@@ -600,6 +600,10 @@ static int resume_error (lua_State *L, const char *msg) {
    lua_unlock(L);
    return status;
  }
+
+LUA_API int lua_isyieldable (lua_State *L) {
+  return !noyield(L);
+}
  
 LUA_API int lua_vyield (lua_State *L, int nresults, void *ctx) {
    lua_lock(L);

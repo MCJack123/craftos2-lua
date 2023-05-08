@@ -126,8 +126,10 @@ static int db_getinfo (lua_State *L) {
     settabsi(L, "lastlinedefined", ar.lastlinedefined);
     settabss(L, "what", ar.what);
   }
-  if (strchr(options, 'l'))
+  if (strchr(options, 'l')) {
     settabsi(L, "currentline", ar.currentline);
+    settabsi(L, "currentcolumn", 0);  /* stub */
+  }
   if (strchr(options, 'u')) {
     settabsi(L, "nups", ar.nups);
     settabsi(L, "nparams", ar.nparams);

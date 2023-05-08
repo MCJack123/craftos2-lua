@@ -279,10 +279,17 @@ static int luaB_pairs (lua_State *L) {
 
 static int ipairsaux (lua_State *L) {
   int i = luaL_checkint(L, 2);
+  if (lua_icontext(L)) return (lua_isnil(L, -1)) ? 0 : 2;
   luaL_checktype(L, 1, LUA_TTABLE);
   i++;  /* next value */
   lua_pushinteger(L, i);
   lua_rawgeti(L, 1, i);
+  if (lua_isnil(L, -1) && luaL_getmetafield(L, 1, "__index")) {
+    lua_remove(L, -2);
+    lua_pushvalue(L, 1);
+    lua_pushinteger(L, i);
+    lua_icall(L, 2, 1, 1);
+  }
   return (lua_isnil(L, -1)) ? 0 : 2;
 }
 
@@ -407,20 +414,7 @@ static int luaB_assert (lua_State *L) {
 }
 
 
-static int luaB_unpack (lua_State *L) {
-  int i, e, n;
-  luaL_checktype(L, 1, LUA_TTABLE);
-  i = luaL_optint(L, 2, 1);
-  e = luaL_opt(L, luaL_checkint, 3, lua_objlen(L, 1));
-  if (i > e) return 0;  /* empty range */
-  n = e - i + 1;  /* number of elements */
-  if (n <= 0 || !lua_checkstack(L, n))  /* n <= 0 means arith. overflow */
-    return luaL_error(L, "too many results to unpack");
-  lua_rawgeti(L, 1, i);  /* push arg[i] (avoiding overflow problems) */
-  while (i++ < e)  /* push arg[i + 1...e] */
-    lua_rawgeti(L, 1, i);
-  return n;
-}
+extern int tunpack (lua_State *L);
 
 
 static int luaB_select (lua_State *L) {
@@ -533,10 +527,10 @@ static const luaL_Reg base_funcs[] = {
   {"tonumber", luaB_tonumber},
   {"tostring", luaB_tostring},
   {"type", luaB_type},
-  {"unpack", luaB_unpack},
+  {"unpack", tunpack},
   {"__inext", ipairsaux},
   /*{"epcall", luaB_epcall},*/
-  {"xpcall", luaB_xpcall},
+  {"xpcall", luaB_epcall},
   {NULL, NULL}
 };
 
@@ -694,8 +688,14 @@ static int luaB_yield (lua_State *L) {
 
 
 static int luaB_corunning (lua_State *L) {
-  if (lua_pushthread(L))
-    lua_pushnil(L);  /* main thread is not a coroutine */
+  int ismain = lua_pushthread(L);
+  lua_pushboolean(L, ismain);
+  return 2;
+}
+
+static int luaB_yieldable (lua_State *L) {
+  lua_State *co = lua_isnone(L, 1) ? L : lua_tothread(L, 1);
+  lua_pushboolean(L, lua_isyieldable(co));
   return 1;
 }
 
@@ -707,6 +707,7 @@ static const luaL_Reg co_funcs[] = {
   {"status", luaB_costatus},
   {"wrap", luaB_cowrap},
   {"yield", luaB_yield},
+  {"isyieldable", luaB_yieldable},
   {NULL, NULL}
 };
 

@@ -228,6 +228,7 @@ LUA_API int lua_pcall(lua_State *L, int na, int nr, int ef);
 LUA_API int  (lua_vyield) (lua_State *L, int nresults, void *ctx);
 LUA_API int  (lua_resume) (lua_State *L, int narg);
 LUA_API int  (lua_status) (lua_State *L);
+LUA_API int  (lua_isyieldable) (lua_State *L);
 
 #define lua_yield(L, nr)	lua_vyield(L, (nr), NULL)
 #define lua_iyield(L, nr, i)	lua_vyield(L, (nr), (void *)(ptrdiff_t)(i))

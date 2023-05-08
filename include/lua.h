@@ -170,6 +170,7 @@ LUA_API void  (lua_pushcclosure) (lua_State *L, lua_CFunction fn, int n);
 LUA_API void  (lua_pushboolean) (lua_State *L, int b);
 LUA_API void  (lua_pushlightuserdata) (lua_State *L, void *p);
 LUA_API int   (lua_pushthread) (lua_State *L);
+LUA_API const char *(lua_pushsubstring) (lua_State *L, int idx, size_t start, size_t len);
 
 
 /*
@@ -227,6 +228,7 @@ LUA_API int lua_pcall(lua_State *L, int na, int nr, int ef);
 LUA_API int  (lua_vyield) (lua_State *L, int nresults, void *ctx);
 LUA_API int  (lua_resume) (lua_State *L, int narg);
 LUA_API int  (lua_status) (lua_State *L);
+LUA_API int  (lua_isyieldable) (lua_State *L);
 
 #define lua_yield(L, nr)	lua_vyield(L, (nr), NULL)
 #define lua_iyield(L, nr, i)	lua_vyield(L, (nr), (void *)(ptrdiff_t)(i))
@@ -266,7 +268,6 @@ LUA_API void  (lua_halt) (lua_State *L); /* forcefully halts the Lua state speci
 											do not use the state after calling this - close it immediately */
 LUA_API void  (lua_externalerror) (lua_State *L, const char * message); /* throws an error into a running state - meant to be run from a different thread */
 LUA_API void  (lua_setlockstate) (lua_State *L, int enabled); /* enables/disables lua_lock */
-
 
 
 /* 

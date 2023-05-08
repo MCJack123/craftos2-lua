@@ -30,6 +30,9 @@
 #define tostate(l)   (cast(lua_State *, cast(lu_byte *, l) + LUAI_EXTRASPACE))
 
 
+LUALIB_API const char KEY_HOOK;
+
+
 /*
 ** Main thread combines a thread state and the global state
 */
@@ -124,7 +127,7 @@ static void preinit_state (lua_State *L, global_State *g) {
 static void close_state (lua_State *L) {
   global_State *g = G(L);
   TRope *cluster = g->ropeclusters, *next;
-  TRope *sscluster = g->ssclusters, *ssnext;
+  TSubString *sscluster = g->ssclusters, *ssnext;
   luaF_close(L, L->stack);  /* close all upvalues for this thread */
   luaC_freeall(L);  /* collect all objects */
   lua_assert(g->rootgc == obj2gco(L));
@@ -151,6 +154,8 @@ static void close_state (lua_State *L) {
 
 
 lua_State *luaE_newthread (lua_State *L) {
+  TValue ptmp;
+  const TValue *hookt, *val;
   lua_State *L1 = tostate(luaM_malloc(L, state_size(lua_State)));
   luaC_link(L, obj2gco(L1), LUA_TTHREAD);
   preinit_state(L1, G(L));
@@ -159,6 +164,17 @@ lua_State *luaE_newthread (lua_State *L) {
   L1->hookmask = L->hookmask;
   L1->basehookcount = L->basehookcount;
   L1->hook = L->hook;
+  /* copy Lua hook function */
+  ptmp.tt = LUA_TLIGHTUSERDATA;
+  ptmp.value.p = (void *)&KEY_HOOK;
+  hookt = luaH_get(L, hvalue(&G(L)->l_registry), &ptmp);
+  if (hookt != luaO_nilobject) {
+    ptmp.tt = LUA_TTHREAD;
+    ptmp.value.gc = cast(GCObject*, L);
+    val = luaH_get(L, hvalue(hookt), &ptmp);
+    ptmp.value.gc = cast(GCObject*, L1);
+    setobj(L, luaH_set(L, hvalue(hookt), &ptmp), val);
+  }
   resethookcount(L1);
   lua_assert(iswhite(obj2gco(L1)));
   return L1;

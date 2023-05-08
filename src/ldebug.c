@@ -594,6 +594,9 @@ void luaG_typeerror (lua_State *L, const TValue *o, const char *op) {
   const char *kind = (isinstack(L->ci, o)) ?
                          getobjname(L, L->ci, cast_int(o - L->base), &name) :
                          NULL;
+  const TValue *tn = luaT_gettmbyobj(L, o, TM_NAME);
+  if (tn != luaO_nilobject && tostring(L, tn))
+    t = svalue(tn);
   if (kind)
     luaG_runerror(L, "attempt to %s %s " LUA_QS " (a %s value)",
                 op, kind, name, t);
@@ -620,6 +623,12 @@ void luaG_aritherror (lua_State *L, const TValue *p1, const TValue *p2) {
 int luaG_ordererror (lua_State *L, const TValue *p1, const TValue *p2) {
   const char *t1 = luaT_typenames[ttype(p1)];
   const char *t2 = luaT_typenames[ttype(p2)];
+  const TValue *tn1 = luaT_gettmbyobj(L, p1, TM_NAME), *tn2;
+  if (tn1 != luaO_nilobject && tostring(L, tn1))
+    t1 = svalue(tn1);
+  tn2 = luaT_gettmbyobj(L, p2, TM_NAME);
+  if (tn2 != luaO_nilobject && tostring(L, tn2))
+    t2 = svalue(tn2);
   if (t1[2] == t2[2])
     luaG_runerror(L, "attempt to compare two %s values", t1);
   else

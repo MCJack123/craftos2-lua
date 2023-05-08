@@ -17,9 +17,11 @@
 
 #if defined(LUA_COMPAT_GETN)
 LUALIB_API int (luaL_getn) (lua_State *L, int t);
+LUALIB_API int (luaL_igetn) (lua_State *L, int t, int ictx);
 LUALIB_API void (luaL_setn) (lua_State *L, int t, int n);
 #else
 #define luaL_getn(L,i)          ((int)lua_objlen(L, i))
+#define luaL_igetn(L,i,c)       ((int)lua_objlen(L, i))
 #define luaL_setn(L,i,j)        ((void)0)  /* no op! */
 #endif
 
@@ -50,7 +52,7 @@ LUALIB_API int (luaL_argerror) (lua_State *L, int numarg, const char *extramsg);
 LUALIB_API int (luaL_argerror_)(lua_State *L, int numarg, const char *extramsg);
 LUALIB_API const char *(luaL_checklstring) (lua_State *L, int numArg,
                                                           size_t *l);
-LUALIB_API const char *(luaL_checkstring_) (lua_State *L, int numArg);
+LUALIB_API const char *(luaL_checkstring_)(lua_State *L, int numArg);
 LUALIB_API const char *(luaL_optlstring) (lua_State *L, int numArg,
                                           const char *def, size_t *l);
 LUALIB_API lua_Number (luaL_checknumber) (lua_State *L, int numArg);
@@ -93,6 +95,11 @@ LUALIB_API const char *(luaL_gsub) (lua_State *L, const char *s, const char *p,
 
 LUALIB_API const char *(luaL_findtable) (lua_State *L, int idx,
                                          const char *fname, int szhint);
+
+LUALIB_API void (luaL_igeti) (lua_State *L, int idx, int n, int ctx);
+LUALIB_API void (luaL_vgeti) (lua_State *L, int idx, int n, void *ctx);
+LUALIB_API void (luaL_iseti) (lua_State *L, int idx, int n, int ctx);
+LUALIB_API void (luaL_vseti) (lua_State *L, int idx, int n, void *ctx);
 
 
 

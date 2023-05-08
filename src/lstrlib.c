@@ -106,7 +106,6 @@ static int str_upper (lua_State *L) {
 static int str_rep (lua_State *L) {
   size_t l, sl;
   char * str;
-  void * ud;
   const char *s = luaL_checklstring(L, 1, &l);
   int n = luaL_checkint(L, 2), i;
   const char *sep = luaL_optlstring(L, 3, "", &sl);

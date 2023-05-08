@@ -96,6 +96,11 @@ LUALIB_API const char *(luaL_gsub) (lua_State *L, const char *s, const char *p,
 LUALIB_API const char *(luaL_findtable) (lua_State *L, int idx,
                                          const char *fname, int szhint);
 
+LUALIB_API void (luaL_igeti) (lua_State *L, int idx, int n, int ctx);
+LUALIB_API void (luaL_vgeti) (lua_State *L, int idx, int n, void *ctx);
+LUALIB_API void (luaL_iseti) (lua_State *L, int idx, int n, int ctx);
+LUALIB_API void (luaL_vseti) (lua_State *L, int idx, int n, void *ctx);
+
 
 
 
