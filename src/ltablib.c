@@ -156,13 +156,13 @@ static int tinsert (lua_State *L) {
         luaL_igeti(L, 1, i-1, i * 2 + 1);
         luaL_iseti(L, 1, i, i * 2 - 2);  /* t[i] = t[i-1] */
       }
+      lua_pop(L, 1);
       break;
     }
     default: {
       return luaL_error(L, "wrong number of arguments to " LUA_QL("insert"));
     }
   }
-  lua_pop(L, 1);
   luaL_setn(L, 1, e);  /* new size */
   luaL_iseti(L, 1, pos, -2);  /* t[pos] = v */
   return 0;
