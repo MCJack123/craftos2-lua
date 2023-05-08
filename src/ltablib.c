@@ -144,14 +144,17 @@ static int tinsert (lua_State *L) {
       if (pos > e) e = pos;  /* `grow' array if necessary */
       if (lua_icontext(L)) {
         i = lua_icontext(L) >> 1;
-        if (lua_icontext(L) % 2) luaL_iseti(L, 1, i, --i * 2);  /* t[i] = t[i-1] */
+        if (lua_icontext(L) % 2) {
+          luaL_iseti(L, 1, i, i * 2 - 2);  /* t[i] = t[i-1] */
+          i--;
+        }
       } else {
         i = e;
         lua_pushinteger(L, e);
       }
-      while (i > pos) {  /* move up elements */
+      for (; i > pos; i--) {  /* move up elements */
         luaL_igeti(L, 1, i-1, i * 2 + 1);
-        luaL_iseti(L, 1, i, --i * 2);  /* t[i] = t[i-1] */
+        luaL_iseti(L, 1, i, i * 2 - 2);  /* t[i] = t[i-1] */
       }
       break;
     }
@@ -176,20 +179,24 @@ static int tremove (lua_State *L) {
   else if (lua_icontext(L) > 0) {
     e = lua_tointeger(L, 3);
     pos = lua_icontext(L) >> 1;
-    if (lua_icontext(L) % 2)
-      luaL_iseti(L, 1, pos, pos++ * 2);  /* t[pos] = t[pos+1] */
+    if (lua_icontext(L) % 2) {
+      luaL_iseti(L, 1, pos, pos * 2 + 2);  /* t[pos] = t[pos+1] */
+      pos++;
+    }
     goto resume;
   }
   e = aux_igetn(L, 1, -1);
+  lua_settop(L, 2);
+  lua_pushinteger(L, e);
   pos = luaL_optint(L, 2, e);
   if (!(1 <= pos && pos <= e))  /* position is outside bounds? */
    return 0;  /* nothing to remove */
   luaL_setn(L, 1, e - 1);  /* t.n = n-1 */
   luaL_igeti(L, 1, pos, -3);  /* result = t[pos] */
 resume:
-  while (pos<e) {
+  for (; pos<e; pos++) {
     luaL_igeti(L, 1, pos+1, pos * 2 + 1);
-    luaL_iseti(L, 1, pos, pos++ * 2);  /* t[pos] = t[pos+1] */
+    luaL_iseti(L, 1, pos, pos * 2 + 2);  /* t[pos] = t[pos+1] */
   }
   lua_pushnil(L);
   luaL_iseti(L, 1, e, -2);  /* t[e] = nil */
@@ -219,22 +226,26 @@ static int tmove (lua_State *L) {
                   "destination wrap around");
     if (t > e || t <= f || (tt != 1 && !lua_equal(L, 1, tt))) {
       i = lua_icontext(L) >> 1;
-      if (lua_icontext(L) % 2) 
-        luaL_iseti(L, tt, t + i, ++i * 2);
-      while (i < n) {
+      if (lua_icontext(L) % 2) {
+        luaL_iseti(L, tt, t + i, i * 2 + 2);
+        i++;
+      }
+      for (; i < n; i++) {
         luaL_igeti(L, 1, f + i, i * 2 + 1);
-        luaL_iseti(L, tt, t + i, ++i * 2);
+        luaL_iseti(L, tt, t + i, i * 2 + 2);
       }
     }
     else {
       i = lua_icontext(L) >> 1;
       if (lua_icontext(L) == 0) i = n - 1;
       else if (lua_icontext(L) == INT_MAX) i = 0;
-      else if (lua_icontext(L) % 2)
-        luaL_iseti(L, tt, t + i, i == 1 ? --i + INT_MAX : --i * 2);
-      while (i >= 0) {
+      else if (lua_icontext(L) % 2) {
+        luaL_iseti(L, tt, t + i, i == 1 ? INT_MAX : i * 2 - 2);
+        i--;
+      }
+      for (; i >= 0; i--) {
         luaL_igeti(L, 1, f + i, i * 2 + 1);
-        luaL_iseti(L, tt, t + i, i == 1 ? --i + INT_MAX : --i * 2);
+        luaL_iseti(L, tt, t + i, i == 1 ? INT_MAX : i * 2 - 2);
       }
     }
   }
