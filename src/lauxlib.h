@@ -121,7 +121,7 @@ LUALIB_API void (luaL_vseti) (lua_State *L, int idx, int n, void *ctx);
 
 #define luaL_tostring(L,n) (luaL_tolstring(L, (n), NULL))
 
-#define luaL_typename(L,i)	lua_typename(L, lua_type(L,(i)))
+LUALIB_API const char * (luaL_typename) (lua_State *L, int idx);
 
 #define luaL_dofile(L, fn) \
 	(luaL_loadfile(L, fn) || lua_pcall(L, 0, LUA_MULTRET, 0))

@@ -104,6 +104,15 @@ LUALIB_API int luaL_error (lua_State *L, const char *fmt, ...) {
   return lua_error(L);
 }
 
+LUALIB_API const char * luaL_typename(lua_State *L, int idx) {
+  if (luaL_getmetafield(L, idx, "__name")) {
+    const char * s = lua_tostring(L, -1);
+    lua_pop(L, 1);
+    return s;
+  }
+  return lua_typename(L, lua_type(L, idx));
+}
+
 /* }====================================================== */
 
 

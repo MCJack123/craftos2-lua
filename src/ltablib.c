@@ -162,6 +162,7 @@ static int tinsert (lua_State *L) {
       return luaL_error(L, "wrong number of arguments to " LUA_QL("insert"));
     }
   }
+  lua_pop(L, 1);
   luaL_setn(L, 1, e);  /* new size */
   luaL_iseti(L, 1, pos, -2);  /* t[pos] = v */
   return 0;
@@ -186,9 +187,9 @@ static int tremove (lua_State *L) {
     goto resume;
   }
   e = aux_igetn(L, 1, -1);
+  pos = luaL_optint(L, 2, e);
   lua_settop(L, 2);
   lua_pushinteger(L, e);
-  pos = luaL_optint(L, 2, e);
   if (!(1 <= pos && pos <= e))  /* position is outside bounds? */
    return 0;  /* nothing to remove */
   luaL_setn(L, 1, e - 1);  /* t.n = n-1 */
