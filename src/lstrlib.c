@@ -756,9 +756,10 @@ static void addquoted (lua_State *L, luaL_Buffer *b, int arg) {
   case LUA_TNUMBER:
     s = luaL_tolstring(L, arg, &l); /* pushes the string version to the top of the stack */
     luaL_addlstring(b, s, l);
+    lua_pop(L, 1);
     break;
   case LUA_TSTRING: {
-    s = luaL_tolstring(L, arg, &l);
+    s = lua_tolstring(L, arg, &l);
     luaL_addchar(b, '"');
     while (l--) {
       switch (*s) {
