@@ -82,7 +82,7 @@ static StkId traceexec (lua_State *L, const Instruction *pc) {
     int newline = getline(p, npc);
     /* call linehook when enter a new function, when jump back (loop),
        or when enter a new line */
-    if (npc == 0 || pc <= oldpc || newline != getline(p, pcRel(oldpc, p))) {
+    if (npc == 0 || pc <= oldpc || (pcRel(oldpc, p) >= 0 && newline != getline(p, pcRel(oldpc, p)))) {
       L->ci->hook_called_mask |= LUA_MASKLINE;
       luaD_callhook(L, LUA_HOOKLINE, newline);
     }
