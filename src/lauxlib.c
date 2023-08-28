@@ -136,7 +136,13 @@ LUALIB_API const char * luaL_tolstring(lua_State *L, int idx, size_t *len) {
             lua_pushliteral(L, "nil");
             break;
         default:
-            lua_pushfstring(L, "%s: %p", luaL_typename(L, idx), lua_topointer(L, idx));
+            if (luaL_getmetafield(L, idx, "__name")) {
+              if (idx < 0) idx--;
+              lua_pushfstring(L, "%s: %p", lua_tostring(L, -1), lua_topointer(L, idx));
+              lua_remove(L, -2);
+            } else {
+              lua_pushfstring(L, "%s: %p", luaL_typename(L, idx), lua_topointer(L, idx));
+            }
             break;
         }
     }

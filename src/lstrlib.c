@@ -857,7 +857,7 @@ static int str_format (lua_State *L) {
           break;
         }
         case 'e':  case 'E': case 'f':
-        case 'g': case 'G': {
+        case 'g': case 'G': case 'a': case 'A': {
           sprintf(buff, form, (double)luaL_checknumber(L, arg));
           break;
         }
