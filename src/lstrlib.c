@@ -119,7 +119,7 @@ static int str_rep (lua_State *L) {
       memcpy(str + i + sl, s, l);
     }
     lua_pushlstring(L, str, l * n + sl * (n - 1));
-    luaM_free(L, str);
+    luaM_freearray(L, str, l * n + sl * (n - 1), char);
   }
   return 1;
 }
