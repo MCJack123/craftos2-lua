@@ -10,6 +10,7 @@ CC?= gcc
 CXX?= g++
 CFLAGS= -O2 -Wall -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCFLAGS)
 CXXFLAGS= $(CFLAGS) 
+DYLD?= $(CXX) -shared -fPIC
 LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
 LIBS= -lm $(SYSLIBS) $(MYLIBS)
 
@@ -31,6 +32,7 @@ MYOBJS=
 PLATS= aix ansi bsd freebsd generic linux macosx macosx-arm mingw posix solaris emscripten
 
 LUA_A?=	liblua.a
+LUA_D?= liblua.so
 CORE_O=	lapi.o lcode.o lctype.o ldebug.o ldo.o ldump.o lfunc.o lgc.o llex.o \
 	lmem.o lobject.o lopcodes.o lparser.o lstate.o lstring.o ltable.o \
 	ltm.o lundump.o lvm.o lzio.o llock.o
@@ -45,7 +47,7 @@ LUAC_T=	luac
 LUAC_O=	luac.o
 
 ALL_O= $(BASE_O) $(LUA_O) $(LUAC_O)
-ALL_T= $(LUA_A)
+ALL_T= $(LUA_D)
 ALL_A= $(LUA_A)
 
 # Targets start here.
@@ -56,6 +58,9 @@ all:	$(ALL_T)
 o:	$(ALL_O)
 
 a:	$(ALL_A)
+
+$(LUA_D): $(CORE_O) $(LIB_O)
+	$(DYLD) -o $@ $(MYLDFLAGS) $(CORE_O) $(LIB_O)
 
 $(LUA_A): $(BASE_O)
 	$(AR) $@ $(BASE_O)
@@ -105,16 +110,16 @@ freebsd:
 generic: $(ALL)
 
 linux:
-	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_LINUX" SYSLIBS="-Wl,-E -ldl -lreadline"
+	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_LINUX -fPIC" SYSLIBS="-Wl,-E -ldl -lreadline"
 
 macosx:
-	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_MACOSX -mmacosx-version-min=10.9" SYSLIBS="-lreadline" CC=cc CXX=c++
+	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_MACOSX -mmacosx-version-min=10.9" SYSLIBS="-lreadline" CC=cc CXX=c++ LUA_D="liblua.dylib" DYLD="$(CXX) -dynamiclib -fPIC"
 
 macosx-arm:
-	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_MACOSX -mmacosx-version-min=11.0 -target arm64-apple-macos11" SYSLIBS="-lreadline" CC=cc LUA_A="liblua-arm64.a"
+	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_MACOSX -mmacosx-version-min=11.0 -target arm64-apple-macos11" SYSLIBS="-lreadline" CC=cc LUA_D="liblua-arm64.dylib" DYLD="$(CXX) -target arm64-apple-macos11 -dynamiclib -fPIC"
 
 mingw:
-	$(MAKE) "LUA_A=lua52.dll" "LUA_T=lua.exe" \
+	$(MAKE) "LUA_D=lua52.dll" "LUA_T=lua.exe" \
 	"AR=$(CC) -shared -o" "RANLIB=strip --strip-unneeded" \
 	"SYSCFLAGS=-DLUA_BUILD_AS_DLL" "SYSLIBS=" "SYSLDFLAGS=-s" lua.exe
 	$(MAKE) "LUAC_T=luac.exe" luac.exe

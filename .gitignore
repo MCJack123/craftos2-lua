@@ -7,6 +7,8 @@
 *.ilk
 *.exp
 *.exe
+*.so
+*.dylib
 /.vs
 x86
 x64
