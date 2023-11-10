@@ -685,9 +685,6 @@ static void add_s (MatchState *ms, luaL_Buffer *b, const char *s,
     else {
       i++;  /* skip ESC */
       if (!isdigit(uchar(news[i]))) {
-        if (news[i] != L_ESC)
-          luaL_error(ms->L, "invalid use of " LUA_QL("%c")
-                           " in replacement string", L_ESC);
         luaL_addchar(b, news[i]);
       }
       else if (news[i] == '0')

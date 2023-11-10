@@ -312,6 +312,7 @@ LUA_API void  (lua_halt) (lua_State *L); /* forcefully halts the Lua state speci
 											warning: this will leave the state in an invalid state;
 											do not use the state after calling this - close it immediately */
 LUA_API void  (lua_externalerror) (lua_State *L, const char * message); /* throws an error into a running state - meant to be run from a different thread */
+LUA_API void  (lua_setlockstate) (lua_State *L, int enabled); /* enables/disables lua_lock */
 
 
 
@@ -425,6 +426,7 @@ struct lua_Debug {
   char short_src[LUA_IDSIZE]; /* (S) */
   /* private part */
   struct CallInfo *i_ci;  /* active function */
+  int instruction;  /* (i) current instruction offset */
 };
 
 /* }====================================================================== */
