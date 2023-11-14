@@ -415,5 +415,5 @@ LUALIB_API void lualib_debug_ccpc_functions(void(*scm)(lua_State *L, int), lua_C
   //setcompmask = scm;
   dblib[0].func = debug;
   dblib[8].func = breakpoint;
-  dblib[15].func = unsetbreakpoint;
+  dblib[17].func = unsetbreakpoint;
 }

@@ -1079,7 +1079,7 @@ static int getnum(const char **fmt, int df) {
         int a = 0;
         do {
             a = a * 10 + (*((*fmt)++) - '0');
-        } while (digit(**fmt) && a <= ((int)MAXSIZE - 9) / 10);
+        } while (digit(**fmt) && a <= (INT_MAX - 9) / 10);
         return a;
     }
 }
