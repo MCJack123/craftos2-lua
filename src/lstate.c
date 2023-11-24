@@ -64,6 +64,9 @@ typedef struct LX {
 } LX;
 
 
+LUALIB_API const char KEY_HOOK;
+
+
 /*
 ** Main thread combines a thread state and the global state
 */
@@ -186,6 +189,7 @@ static void init_registry (lua_State *L, global_State *g) {
 */
 static void f_luaopen (lua_State *L, void *ud) {
   global_State *g = G(L);
+  l_mem olddebt;
   UNUSED(ud);
   stack_init(L, L);  /* init stack */
   init_registry(L, g);
@@ -195,6 +199,23 @@ static void f_luaopen (lua_State *L, void *ud) {
   /* pre-create memory-error message */
   g->memerrmsg = luaS_newliteral(L, MEMERRMSG);
   luaS_fix(g->memerrmsg);  /* it should never be collected */
+  /* allocate rope and substring clusters */
+  olddebt = g->GCdebt;  /* don't count debt of these, they are never found by GC */
+  g->ropestack = luaM_newvector(L, g->ropestacksize, TString *);
+  g->ropeclusters = luaM_newvector(L, ROPE_CLUSTER_SIZE, TString);
+  memset(g->ropeclusters, 0, ROPE_CLUSTER_SIZE * sizeof(TString));
+  nextropecluster(g->ropeclusters) = NULL;  /* ensure next pointer is NULL */
+  ((unsigned long*)g->ropeclusters)[BITMAP_SKIP] = 0xFFFF;  /* always mark first entry as used by bitmap */
+  g->ropefreecluster = g->ropeclusters;
+  g->ssclusters = luaM_newvector(L, SUBSTR_CLUSTER_SIZE, TString);
+  memset(g->ssclusters, 0, SUBSTR_CLUSTER_SIZE * sizeof(TString));
+  nextsscluster(g->ssclusters) = NULL;  /* ensure next pointer is NULL */
+  ((unsigned long*)g->ssclusters)[BITMAP_SKIP] = 0xFFFF;  /* always mark first entry as used by bitmap */
+  g->ssfreecluster = g->ssclusters;
+  memset(g->allowedcfuncs, 0, sizeof(g->allowedcfuncs));  /* set all funclists to NULL */
+  /* mark new allocations as compensated & reset debt */
+  //g->totalbytes += g->GCdebt - olddebt;
+  g->GCdebt = olddebt;
   g->gcrunning = 1;  /* allow gc */
   g->version = lua_version(NULL);
   luai_userstateopen(L);
@@ -226,6 +247,8 @@ static void preinit_state (lua_State *L, global_State *g) {
 
 static void close_state (lua_State *L) {
   global_State *g = G(L);
+  TString *cluster = g->ropeclusters, *next;
+  TString *sscluster = g->ssclusters, *ssnext;
   luaF_close(L, L->stack);  /* close all upvalues for this thread */
   luaC_freeallobjects(L);  /* collect all objects */
   if (g->version)  /* closing a fully built state? */
@@ -233,7 +256,18 @@ static void close_state (lua_State *L) {
   luaM_freearray(L, G(L)->strt.hash, G(L)->strt.size);
   luaZ_freebuffer(L, &g->buff);
   freestack(L);
-  lua_assert(gettotalbytes(g) == sizeof(LG));
+  luaM_freearray(L, g->ropestack, g->ropestacksize);
+  while (cluster != NULL) {
+    next = *(TString**)cluster;
+    luaM_free(L, cluster);
+    cluster = next;
+  }
+  while (sscluster != NULL) {
+    ssnext = *(TString**)sscluster;
+    luaM_free(L, sscluster);
+    sscluster = ssnext;
+  }
+  //lua_assert(gettotalbytes(g) == sizeof(LG));
   if (g->lockstate) lua_unlock(L);
   _lua_freelock(g->lock);
   (*g->frealloc)(g->ud, fromstate(L), sizeof(LG), 0);  /* free main block */
@@ -241,6 +275,8 @@ static void close_state (lua_State *L) {
 
 
 LUA_API lua_State *lua_newthread (lua_State *L) {
+  TValue ptmp;
+  const TValue *hookt, *val;
   lua_State *L1;
   lua_lock(L);
   luaC_checkGC(L);
@@ -251,6 +287,15 @@ LUA_API lua_State *lua_newthread (lua_State *L) {
   L1->hookmask = L->hookmask;
   L1->basehookcount = L->basehookcount;
   L1->hook = L->hook;
+  /* copy Lua hook function */
+  setpvalue(&ptmp, (void *)&KEY_HOOK)
+  hookt = luaH_get(L, hvalue(&G(L)->l_registry), &ptmp);
+  if (hookt != luaO_nilobject) {
+    setobj(L, &ptmp, cast(GCObject*, L));
+    val = luaH_get(L, hvalue(hookt), &ptmp);
+    setobj(L, &ptmp, cast(GCObject*, L1));
+    setobj(L, luaH_set(L, hvalue(hookt), &ptmp), val);
+  }
   resethookcount(L1);
   luai_userstatethread(L, L1);
   stack_init(L1, L);  /* init stack */
@@ -313,7 +358,8 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud) {
   g->lock = _lua_newlock();
   g->lockstate = 0;
   g->haltstate = 0;
-  for (i=0; i < LUA_NUMTAGS; i++) g->mt[i] = NULL;
+  g->ropestacksize = 8;
+  for (i=0; i < 14; i++) g->mt[i] = NULL;
   if (luaD_rawrunprotected(L, f_luaopen, NULL) != LUA_OK) {
     /* memory allocation error: free partial state */
     close_state(L);

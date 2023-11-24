@@ -63,6 +63,12 @@ typedef struct stringtable {
 } stringtable;
 
 
+typedef struct functable {
+  lua_CFunction f;
+  struct functable * next;
+} functable;
+
+
 /*
 ** information about a call
 */
@@ -144,11 +150,19 @@ typedef struct global_State {
   const lua_Number *version;  /* pointer to version number */
   TString *memerrmsg;  /* memory-error message */
   TString *tmname[TM_N];  /* array with tag-method names */
-  struct Table *mt[LUA_NUMTAGS];  /* metatables for basic types */
+  struct Table *mt[14];  /* metatables for basic types */
+  /* all members below this are added in craftos2-lua */
   void* lock;  /* pointer to lock */
   int lockstate;  /* 0 = unlocked, 1 = locked */
   int haltstate;  /* set to indicate state execution should be halted (1 = halt all, 2 = throw error) */
   const char * haltmessage;  /* if haltstate is 2, a message to show as the error message */
+  TString **ropestack;  /* temporary stack used to store ropes when constructing strings */
+  int ropestacksize;  /* size of above stack */
+  TString *ropeclusters;  /* pointer to first node of rope cluster list */
+  TString *ropefreecluster;  /* pointer to first potentially free cluster */
+  TString *ssclusters;  /* pointer to first node of rope cluster list */
+  TString *ssfreecluster;  /* pointer to first potentially free cluster */
+  functable *allowedcfuncs[256];  /* "hash map" storing allowed C functions */
 } global_State;
 
 
@@ -214,6 +228,10 @@ union GCObject {
 #define gco2p(o)	check_exp((o)->gch.tt == LUA_TPROTO, &((o)->p))
 #define gco2uv(o)	check_exp((o)->gch.tt == LUA_TUPVAL, &((o)->uv))
 #define gco2th(o)	check_exp((o)->gch.tt == LUA_TTHREAD, &((o)->th))
+#define rawgco2tr(o)	check_exp((o)->gch.tt == LUA_TROPSTR, &((o)->ts))
+#define gco2tr(o)	(&rawgco2tr(o)->tsr)
+#define rawgco2ss(o)	check_exp((o)->gch.tt == LUA_TSUBSTR, &((o)->ts))
+#define gco2ss(o)	(&rawgco2ss(o)->tss)
 
 /* macro to convert any Lua object into a GCObject */
 #define obj2gco(v)	(cast(GCObject *, (v)))

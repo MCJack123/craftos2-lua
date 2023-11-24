@@ -478,7 +478,15 @@ const TValue *luaH_getstr (Table *t, TString *key) {
 /*
 ** main search function
 */
-const TValue *luaH_get (Table *t, const TValue *key) {
+const TValue *luaH_get (lua_State *L, Table *t, const TValue *key) {
+  TValue newobj;
+  if (ttisrope(key)) {
+    setrvalue(L, &newobj, luaS_build(L, rawtrvalue(key)));
+    key = &newobj;
+  } else if (ttissubstr(key)) {
+    setssvalue(L, &newobj, luaS_newlstr(L, getstr(ssvalue(key)->str) + ssvalue(key)->offset, ssvalue(key)->len));
+    key = &newobj;
+  }
   switch (ttype(key)) {
     case LUA_TSHRSTR: return luaH_getstr(t, rawtsvalue(key));
     case LUA_TNIL: return luaO_nilobject;
@@ -508,7 +516,7 @@ const TValue *luaH_get (Table *t, const TValue *key) {
 ** barrier and invalidate the TM cache.
 */
 TValue *luaH_set (lua_State *L, Table *t, const TValue *key) {
-  const TValue *p = luaH_get(t, key);
+  const TValue *p = luaH_get(L, t, key);
   if (p != luaO_nilobject)
     return cast(TValue *, p);
   else return luaH_newkey(L, t, key);

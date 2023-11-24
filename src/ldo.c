@@ -101,6 +101,8 @@ static void seterrorobj (lua_State *L, int errcode, StkId oldtop) {
 
 
 l_noret luaD_throw (lua_State *L, int errcode) {
+  if ((errcode >= LUA_ERRRUN && errcode < LUA_ERRERR) && L->hookmask & LUA_MASKERROR)
+    luaD_hook(L, LUA_HOOKERROR, -1);
   if (L->errorJmp) {  /* thread has an error handler? */
     L->errorJmp->status = errcode;  /* set status */
     LUAI_THROW(L, L->errorJmp);  /* jump to it */
@@ -214,6 +216,7 @@ void luaD_shrinkstack (lua_State *L) {
 }
 
 
+// TODO: Reimplement yielding from hooks (how does this work in 5.2?)
 void luaD_hook (lua_State *L, int event, int line) {
   lua_Hook hook = L->hook;
   if (hook && L->allowhook) {
@@ -295,6 +298,7 @@ static StkId tryfuncTM (lua_State *L, StkId func) {
 */
 int luaD_precall (lua_State *L, StkId func, int nresults) {
   lua_CFunction f;
+  functable *l;
   CallInfo *ci;
   int n;  /* number of arguments (Lua) or returns (C) */
   ptrdiff_t funcr = savestack(L, func);
@@ -306,6 +310,16 @@ int luaD_precall (lua_State *L, StkId func, int nresults) {
       f = clCvalue(func)->f;
      Cfunc:
       luaD_checkstack(L, LUA_MINSTACK);  /* ensure minimum stack size */
+      if (f == NULL) {  /* error if the function is NULL */
+        luaG_runerror(L, "attempt to call invalid C function");
+        return 0; /* prevent IntelliSense warnings */
+      }
+      l = G(L)->allowedcfuncs[((ptrdiff_t)f >> 4) & 0xFF];  /* check if this C function is valid */
+      while (l != NULL && l->f != f) l = l->next;
+      if (l == NULL) {
+        luaG_runerror(L, "attempt to call invalid C function");
+        return 0; /* prevent IntelliSense warnings */
+      }
       ci = next_ci(L);  /* now 'enter' new function */
       ci->nresults = nresults;
       ci->func = restorestack(L, funcr);
@@ -570,6 +584,11 @@ LUA_API int lua_resume (lua_State *L, lua_State *from, int nargs) {
 }
 
 
+LUA_API int lua_isyieldable (lua_State *L) {
+  return L->nny == 0;
+}
+
+
 LUA_API int lua_yieldk (lua_State *L, int nresults, int ctx, lua_CFunction k) {
   CallInfo *ci = L->ci;
   luai_userstateyield(L, nresults);
@@ -634,7 +653,6 @@ struct SParser {  /* data to `f_parser' */
   const char *mode;
   const char *name;
 };
-
 
 static void checkmode (lua_State *L, const char *mode, const char *x) {
   if (mode && strchr(mode, x[0]) == NULL) {

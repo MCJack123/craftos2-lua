@@ -136,6 +136,13 @@ static int luaB_corunning (lua_State *L) {
 }
 
 
+static int luaB_yieldable (lua_State *L) {
+  lua_State *co = lua_isnone(L, 1) ? L : lua_tothread(L, 1);
+  lua_pushboolean(L, lua_isyieldable(co));
+  return 1;
+}
+
+
 static const luaL_Reg co_funcs[] = {
   {"create", luaB_cocreate},
   {"resume", luaB_coresume},
@@ -143,6 +150,7 @@ static const luaL_Reg co_funcs[] = {
   {"status", luaB_costatus},
   {"wrap", luaB_cowrap},
   {"yield", luaB_yield},
+  {"isyieldable", luaB_yieldable},
   {NULL, NULL}
 };
 

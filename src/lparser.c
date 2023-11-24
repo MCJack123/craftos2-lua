@@ -1609,6 +1609,11 @@ static void mainfunc (LexState *ls, FuncState *fs) {
   init_exp(&v, VLOCAL, 0);  /* create and... */
   newupvalue(fs, ls->envn, &v);  /* ...set environment upvalue */
   luaX_next(ls);  /* read first token */
+  if (ls->current == '#') {  /* skip initial shebang line to match LuaJ/Cobalt */
+    while (ls->current != '\n' && ls->current != '\r' && ls->current != EOZ) {
+      luaX_next(ls);
+    }
+  }
   statlist(ls);  /* parse main body */
   check(ls, TK_EOS);
   close_func(ls);

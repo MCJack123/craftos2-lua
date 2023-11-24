@@ -19,6 +19,8 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
+#include "lstring.h"
+
 
 /*
 ** maximum number of captures that a pattern can do during
@@ -58,7 +60,7 @@ static int str_sub (lua_State *L) {
   if (start < 1) start = 1;
   if (end > l) end = l;
   if (start <= end)
-    lua_pushlstring(L, s + start - 1, end - start + 1);
+    lua_pushsubstring(L, 1, start, end - start + 1);
   else lua_pushliteral(L, "");
   return 1;
 }
@@ -106,25 +108,22 @@ static int str_upper (lua_State *L) {
 #define MAXSIZE		((~(size_t)0) >> 1)
 
 static int str_rep (lua_State *L) {
-  size_t l, lsep;
+  size_t l, sl;
+  char * str;
   const char *s = luaL_checklstring(L, 1, &l);
-  int n = luaL_checkint(L, 2);
-  const char *sep = luaL_optlstring(L, 3, "", &lsep);
+  int n = luaL_checkint(L, 2), i;
+  const char *sep = luaL_optlstring(L, 3, "", &sl);
   if (n <= 0) lua_pushliteral(L, "");
-  else if (l + lsep < l || l + lsep >= MAXSIZE / n)  /* may overflow? */
-    return luaL_error(L, "resulting string too large");
+  else if (n == 1) lua_pushvalue(L, 1);
   else {
-    size_t totallen = n * l + (n - 1) * lsep;
-    luaL_Buffer b;
-    char *p = luaL_buffinitsize(L, &b, totallen);
-    while (n-- > 1) {  /* first n-1 copies (followed by separator) */
-      memcpy(p, s, l * sizeof(char)); p += l;
-      if (lsep > 0) {  /* avoid empty 'memcpy' (may be expensive) */
-        memcpy(p, sep, lsep * sizeof(char)); p += lsep;
-      }
+    str = luaM_newvector(L, l * n + sl * (n - 1), char);
+    memcpy(str, s, l);
+    for (i = l; i < l*n + sl*(n-1); i+=l+sl) {
+      if (sl > 0) memcpy(str + i, sep, sl);
+      memcpy(str + i + sl, s, l);
     }
-    memcpy(p, s, l * sizeof(char));  /* last copy (not followed by separator) */
-    luaL_pushresultsize(&b, totallen);
+    lua_pushlstring(L, str, l * n + sl * (n - 1));
+    luaM_freearray(L, str, l * n + sl * (n - 1));
   }
   return 1;
 }
@@ -173,11 +172,12 @@ static int writer (lua_State *L, const void* b, size_t size, void* B) {
 
 static int str_dump (lua_State *L) {
   luaL_Buffer b;
+  int strip = lua_gettop(L) > 1 && lua_toboolean(L, 2);
   luaL_checktype(L, 1, LUA_TFUNCTION);
   lua_settop(L, 1);
   luaL_buffinit(L,&b);
-  if (lua_dump(L, writer, &b) != 0)
-    return luaL_error(L, "unable to dump given function");
+  if (lua_dump53(L, writer, &b, strip) != 0)
+    luaL_error(L, "unable to dump given function");
   luaL_pushresult(&b);
   return 1;
 }
@@ -840,30 +840,49 @@ static const char *luaL_checklstring_nil(lua_State *L, int narg, size_t *len) {
 static void addquoted (lua_State *L, luaL_Buffer *b, int arg) {
   size_t l;
   const char *s;
-  if (lua_isnil(L, arg)) {
+  switch (lua_type(L, arg)) {
+  case LUA_TNIL:
     luaL_addstring(b, "nil");
-    return;
-  }
-  s = luaL_checklstring(L, arg, &l);
-  luaL_addchar(b, '"');
-  while (l--) {
-    if (*s == '"' || *s == '\\' || *s == '\n') {
-      luaL_addchar(b, '\\');
-      luaL_addchar(b, *s);
+    break;
+  case LUA_TBOOLEAN:
+    luaL_addstring(b, lua_toboolean(L, arg) ? "true" : "false");
+    break;
+  case LUA_TNUMBER:
+    s = luaL_tolstring(L, arg, &l); /* pushes the string version to the top of the stack */
+    luaL_addlstring(b, s, l);
+    lua_pop(L, 1);
+    break;
+  case LUA_TSTRING: {
+    s = lua_tolstring(L, arg, &l);
+    luaL_addchar(b, '"');
+    while (l--) {
+      switch (*s) {
+        case '"': case '\\': case '\n': {
+          luaL_addchar(b, '\\');
+          luaL_addchar(b, *s);
+          break;
+        }
+        case '\r': {
+          luaL_addlstring(b, "\\r", 2);
+          break;
+        }
+        case '\0': {
+          luaL_addlstring(b, "\\000", 4);
+          break;
+        }
+        default: {
+          luaL_addchar(b, *s);
+          break;
+        }
+      }
+      s++;
     }
-    else if (*s == '\0' || iscntrl(uchar(*s))) {
-      char buff[10];
-      if (!isdigit(uchar(*(s+1))))
-        sprintf(buff, "\\%d", (int)uchar(*s));
-      else
-        sprintf(buff, "\\%03d", (int)uchar(*s));
-      luaL_addstring(b, buff);
-    }
-    else
-      luaL_addchar(b, *s);
-    s++;
+    luaL_addchar(b, '"');
+    break;
   }
-  luaL_addchar(b, '"');
+  default:
+    luaL_argerror(L, arg, "value has no literal form");
+  }
 }
 
 static const char *scanformat (lua_State *L, const char *strfrmt, char *form) {

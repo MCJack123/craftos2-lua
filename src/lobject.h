@@ -55,6 +55,8 @@
 /* Variant tags for strings */
 #define LUA_TSHRSTR	(LUA_TSTRING | (0 << 4))  /* short strings */
 #define LUA_TLNGSTR	(LUA_TSTRING | (1 << 4))  /* long strings */
+#define LUA_TROPSTR	(LUA_TSTRING | (2 << 4))  /* rope strings */
+#define LUA_TSUBSTR	(LUA_TSTRING | (3 << 4))  /* substrings */
 
 
 /* Bit mark for collectable types */
@@ -137,6 +139,8 @@ typedef struct lua_TValue TValue;
 #define ttisstring(o)		checktype((o), LUA_TSTRING)
 #define ttisshrstring(o)	checktag((o), ctb(LUA_TSHRSTR))
 #define ttislngstring(o)	checktag((o), ctb(LUA_TLNGSTR))
+#define ttisrope(o)	checktag((o), ctb(LUA_TROPSTR))
+#define ttissubstr(o)	checktag((o), ctb(LUA_TSUBSTR))
 #define ttistable(o)		checktag((o), ctb(LUA_TTABLE))
 #define ttisfunction(o)		checktype(o, LUA_TFUNCTION)
 #define ttisclosure(o)		((rttype(o) & 0x1F) == LUA_TFUNCTION)
@@ -164,6 +168,10 @@ typedef struct lua_TValue TValue;
 #define hvalue(o)	check_exp(ttistable(o), &val_(o).gc->h)
 #define bvalue(o)	check_exp(ttisboolean(o), val_(o).b)
 #define thvalue(o)	check_exp(ttisthread(o), &val_(o).gc->th)
+#define rawtrvalue(o)  check_exp(ttisrope(o), &val_(o).gc->ts)
+#define trvalue(o)	(&rawtrvalue(o)->tsr)
+#define rawssvalue(o)  check_exp(ttissubstr(o), &val_(o).gc->ts)
+#define ssvalue(o)	(&rawssvalue(o)->tss)
 /* a dead value may get the 'gc' field, but cannot access its contents */
 #define deadvalue(o)	check_exp(ttisdeadkey(o), cast(void *, val_(o).gc))
 
@@ -234,6 +242,16 @@ typedef struct lua_TValue TValue;
     checkliveness(G(L),io); }
 
 #define setdeadvalue(obj)	settt_(obj, LUA_TDEADKEY)
+#define setrvalue(L,obj,x) \
+  { TValue *i_o=(obj); \
+    val_(i_o).gc=cast(GCObject *, (x)); settt_(i_o, ctb(LUA_TROPSTR)); \
+    checkliveness(G(L),i_o); }
+
+#define setssvalue(L,obj,x) \
+  { TValue *i_o=(obj); \
+    val_(i_o).gc=cast(GCObject *, (x)); settt_(i_o, ctb(LUA_TSUBSTR)); \
+    checkliveness(G(L),i_o); }
+
 
 
 
@@ -415,6 +433,23 @@ typedef union TString {
     unsigned int hash;
     size_t len;  /* number of characters in string */
   } tsv;
+  struct {
+    CommonHeader;
+    GCObject *gclist;
+    union TString *cluster;
+    union TString * left;
+    union TString * right;
+    size_t len;
+    union TString *res;
+  } tsr;
+  struct {
+    CommonHeader;
+    GCObject *gclist;
+    union TString *cluster;
+    union TString *str;
+    size_t offset;
+    size_t len;
+  } tss;
 } TString;
 
 

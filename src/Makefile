@@ -8,7 +8,7 @@ PLAT= none
 
 CC?= gcc
 CXX?= g++
-CFLAGS= -g -Wall -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCFLAGS)
+CFLAGS= -g -Wall -O2 -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCFLAGS)
 CXXFLAGS= $(CFLAGS) 
 DYLD?= $(CXX) -shared -fPIC
 LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
@@ -16,6 +16,7 @@ LIBS= -lm $(SYSLIBS) $(MYLIBS)
 
 AR= ar rcu
 RANLIB?= ranlib
+DYLD?= $(CXX) -shared -fPIC
 RM= rm -f
 
 SYSCFLAGS=

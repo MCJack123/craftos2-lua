@@ -187,8 +187,23 @@ static int luaB_collectgarbage (lua_State *L) {
 
 
 static int luaB_type (lua_State *L) {
+  int t;
   luaL_checkany(L, 1);
-  lua_pushstring(L, luaL_typename(L, 1));
+  t = lua_type(L, 1);
+  lua_getfield(L, LUA_REGISTRYINDEX, "_type_names");
+  if (lua_isnil(L, -1)) {
+    lua_pop(L, 1);
+    lua_newtable(L);
+    lua_pushvalue(L, -1);
+    lua_setfield(L, LUA_REGISTRYINDEX, "_type_names");
+  }
+  lua_rawgeti(L, -1, t);
+  if (lua_isnil(L, -1)) {
+    lua_pop(L, 1);
+    lua_pushstring(L, lua_typename(L, t));
+    lua_pushvalue(L, -1);
+    lua_rawseti(L, -3, t);
+  }
   return 1;
 }
 
@@ -229,11 +244,18 @@ static int luaB_pairs (lua_State *L) {
 
 static int ipairsaux (lua_State *L) {
   int i = luaL_checkint(L, 2);
+  if (lua_getctx(L, NULL) != LUA_OK) return (lua_isnil(L, -1)) ? 0 : 2;
   luaL_checktype(L, 1, LUA_TTABLE);
   i++;  /* next value */
   lua_pushinteger(L, i);
   lua_rawgeti(L, 1, i);
-  return (lua_isnil(L, -1)) ? 1 : 2;
+  if (lua_isnil(L, -1) && luaL_getmetafield(L, 1, "__index")) {
+    lua_remove(L, -2);
+    lua_pushvalue(L, 1);
+    lua_pushinteger(L, i);
+    lua_callk(L, 2, 1, 1, ipairsaux);
+  }
+  return (lua_isnil(L, -1)) ? 0 : 2;
 }
 
 
@@ -256,6 +278,14 @@ static int load_aux (lua_State *L, int status, int envidx) {
     lua_insert(L, -2);  /* put before error message */
     return 2;  /* return nil plus error message */
   }
+}
+
+
+static int luaB_loadstring (lua_State *L) {
+  size_t l;
+  const char *s = luaL_checklstring(L, 1, &l);
+  const char *chunkname = luaL_optstring(L, 2, s);
+  return load_aux(L, luaL_loadbuffer(L, s, l, chunkname), 0);
 }
 
 
@@ -351,6 +381,8 @@ static int luaB_assert (lua_State *L) {
   return lua_gettop(L);
 }
 
+extern int tunpack (lua_State *L);
+
 
 static int luaB_select (lua_State *L) {
   int n = lua_gettop(L);
@@ -425,9 +457,7 @@ static const luaL_Reg base_funcs[] = {
   {"ipairs", luaB_ipairs},
   {"loadfile", luaB_loadfile},
   {"load", luaB_load},
-#if defined(LUA_COMPAT_LOADSTRING)
-  {"loadstring", luaB_load},
-#endif
+  {"loadstring", luaB_loadstring},
   {"next", luaB_next},
   {"pairs", luaB_pairs},
   {"pcall", luaB_pcall},
@@ -441,6 +471,8 @@ static const luaL_Reg base_funcs[] = {
   {"tonumber", luaB_tonumber},
   {"tostring", luaB_tostring},
   {"type", luaB_type},
+  {"unpack", tunpack},
+  {"__inext", ipairsaux},
   {"xpcall", luaB_xpcall},
   {NULL, NULL}
 };

@@ -10,9 +10,12 @@
 *.so
 *.dylib
 /.vs
+/.vscode
 x86
 x64
 ARM64
 lua
 luac
 *.vcxproj.user
+*.so
+*.dylib

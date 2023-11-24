@@ -14,6 +14,7 @@
 
 #include "lobject.h"
 #include "lstate.h"
+#include "lstring.h"
 #include "lundump.h"
 
 typedef struct {
@@ -65,6 +66,21 @@ static void DumpString(const TString* s, DumpState* D)
  {
   uint32_t size=0;
   DumpVar(size,D);
+ }
+ else if ((s->tss.tt & 0x3F) == LUA_TROPSTR)
+ {
+  TString *ss = luaS_build(D->L, s);
+  uint32_t size=ss->tsv.len+1;		/* include trailing '\0' */
+  DumpVar(size,D);
+  DumpBlock(getstr(ss),size*sizeof(char),D);
+ }
+ else if ((s->tss.tt & 0x3F) == LUA_TSUBSTR)
+ {
+  uint8_t null = 0;
+  uint32_t size=s->tss.len+1;		/* include trailing '\0' */
+  DumpVar(size,D);
+  DumpBlock(getstr(s->tss.str)+s->tss.offset*sizeof(char),(size-1)*sizeof(char),D);
+  DumpBlock(&null, 1, D);
  }
  else
  {

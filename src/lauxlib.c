@@ -720,6 +720,7 @@ LUALIB_API int luaL_getmetafield (lua_State *L, int obj, const char *event) {
 
 LUALIB_API int luaL_callmeta (lua_State *L, int obj, const char *event) {
   obj = lua_absindex(L, obj);
+  if (!lua_checkstack(L, 2)) return 0;
   if (!luaL_getmetafield(L, obj, event))  /* no metafield? */
     return 0;
   lua_pushvalue(L, obj);

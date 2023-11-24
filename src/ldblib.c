@@ -18,7 +18,7 @@
 #include "lualib.h"
 
 
-#define HOOKKEY		"_HKEY"
+LUALIB_API const char KEY_HOOK = 'h';
 
 
 static void checkstack (lua_State *L, lua_State *L1, int n) {
@@ -26,6 +26,7 @@ static void checkstack (lua_State *L, lua_State *L1, int n) {
     luaL_error(L, "stack overflow");
 }
 
+void (*setcompmask)(lua_State *L, int mask) = NULL;
 
 static int db_getregistry (lua_State *L) {
   lua_pushvalue(L, LUA_REGISTRYINDEX);
@@ -144,12 +145,18 @@ static int db_getinfo (lua_State *L) {
     settabsi(L, "lastlinedefined", ar.lastlinedefined);
     settabss(L, "what", ar.what);
   }
-  if (strchr(options, 'l'))
+  if (strchr(options, 'l')) {
     settabsi(L, "currentline", ar.currentline);
+    settabsi(L, "currentcolumn", 0);  /* stub */
+  }
   if (strchr(options, 'u')) {
     settabsi(L, "nups", ar.nups);
     settabsi(L, "nparams", ar.nparams);
     settabsb(L, "isvararg", ar.isvararg);
+  }
+  if (strchr(options, 't')) {
+    lua_pushboolean(L, ar.istailcall);
+    lua_setfield(L, -2, "istailcall");
   }
   if (strchr(options, 'n')) {
     settabss(L, "name", ar.name);
@@ -261,7 +268,23 @@ static int db_upvaluejoin (lua_State *L) {
 }
 
 
-#define gethooktable(L)	luaL_getsubtable(L, LUA_REGISTRYINDEX, HOOKKEY)
+static int gethooktable(lua_State *L) {
+  lua_pushlightuserdata(L, &KEY_HOOK);
+  lua_gettable(L, LUA_REGISTRYINDEX);
+  if (lua_isnil(L, -1)) {
+    lua_pop(L, 1);
+    lua_newtable(L);
+    lua_pushlightuserdata(L, &KEY_HOOK);
+    lua_pushvalue(L, -2);
+    lua_settable(L, LUA_REGISTRYINDEX);
+    return 0;
+  } else return 1;
+}
+
+
+static int hook_continue(lua_State *L) {
+
+}
 
 
 static void hookf (lua_State *L, lua_Debug *ar) {
@@ -276,7 +299,7 @@ static void hookf (lua_State *L, lua_Debug *ar) {
       lua_pushinteger(L, ar->currentline);
     else lua_pushnil(L);
     lua_assert(lua_getinfo(L, "lS", ar));
-    lua_call(L, 2, 0);
+    lua_callk(L, 2, 0, 1, hook_continue);
   }
 }
 

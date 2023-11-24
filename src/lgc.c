@@ -249,6 +249,16 @@ static void reallymarkobject (global_State *g, GCObject *o) {
       size = sizestring(gco2ts(o));
       break;  /* nothing else to mark; make it black */
     }
+    case LUA_TROPSTR: {
+      gco2tr(o)->gclist = g->gray;
+      g->gray = o;
+      return;
+    }
+    case LUA_TSUBSTR: {
+      gco2ss(o)->gclist = g->gray;
+      g->gray = o;
+      return;
+    }
     case LUA_TUSERDATA: {
       Table *mt = gco2u(o)->metatable;
       markobject(g, mt);
@@ -514,6 +524,30 @@ static lu_mem traversestack (global_State *g, lua_State *th) {
 }
 
 
+static int traverserope (global_State *g, TString *r) {
+  int size = sizeof(TString);
+  if (r->tsr.left) {
+    markobject(g, r->tsr.left);
+    //size += sizeof(TString);
+  }
+  if (r->tsr.right) {
+    markobject(g, r->tsr.right);
+    //size += sizeof(TString);
+  }
+  if (r->tsr.res) {
+    markobject(g, r->tsr.res);
+    //size += sizeof(TString);
+  }
+  return size;
+}
+
+
+static int traversesubstr (global_State *g, TString *ss) {
+  markobject(g, ss->tss.str);
+  return sizeof(TString);
+}
+
+
 /*
 ** traverse one gray object, turning it to black (except for threads,
 ** which are always gray).
@@ -540,6 +574,18 @@ static void propagatemark (global_State *g) {
       CClosure *cl = gco2ccl(o);
       g->gray = cl->gclist;  /* remove from 'gray' list */
       size = traverseCclosure(g, cl);
+      break;
+    }
+    case LUA_TROPSTR: {
+      TString *tr = gco2tr(o);
+      g->gray = tr->tsr.gclist;  /* remove from 'gray' list */
+      size = traverserope(g, tr);
+      break;
+    }
+    case LUA_TSUBSTR: {
+      TString *ss = gco2ss(o);
+      g->gray = ss->tss.gclist;  /* remove from 'gray' list */
+      size = traversesubstr(g, ss);
       break;
     }
     case LUA_TTHREAD: {
@@ -682,6 +728,8 @@ static void freeobj (lua_State *L, GCObject *o) {
       luaM_freemem(L, o, sizestring(gco2ts(o)));
       break;
     }
+    case LUA_TROPSTR: luaS_freerope(L, gco2tr(o)); break;
+    case LUA_TSUBSTR: luaS_freesubstr(L, gco2ss(o)); break;
     default: lua_assert(0);
   }
 }
@@ -1094,6 +1142,7 @@ static lu_mem singlestep (lua_State *L) {
         GCObject *mt = obj2gco(g->mainthread);
         sweeplist(L, &mt, 1);
         checkSizes(L);
+        luaS_freeclusters(L);
         g->gcstate = GCSpause;  /* finish collection */
         return GCSWEEPCOST;
       }

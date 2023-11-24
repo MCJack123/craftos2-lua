@@ -15,7 +15,7 @@
 
 #define tostring(L,o) (ttisstring(o) || (luaV_tostring(L, o)))
 
-#define tonumber(o,n)	(ttisnumber(o) || (((o) = luaV_tonumber(o,n)) != NULL))
+#define tonumber(L,o,n)	(ttisnumber(o) || (((o) = luaV_tonumber(L,o,n)) != NULL))
 
 #define equalobj(L,o1,o2)  (ttisequal(o1, o2) && luaV_equalobj_(L, o1, o2))
 
@@ -28,7 +28,7 @@ LUAI_FUNC int luaV_equalobj_ (lua_State *L, const TValue *t1, const TValue *t2);
 
 LUAI_FUNC int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r);
 LUAI_FUNC int luaV_lessequal (lua_State *L, const TValue *l, const TValue *r);
-LUAI_FUNC const TValue *luaV_tonumber (const TValue *obj, TValue *n);
+LUAI_FUNC const TValue *luaV_tonumber (lua_State *L, const TValue *obj, TValue *n);
 LUAI_FUNC int luaV_tostring (lua_State *L, StkId obj);
 LUAI_FUNC void luaV_gettable (lua_State *L, const TValue *t, TValue *key,
                                             StkId val);

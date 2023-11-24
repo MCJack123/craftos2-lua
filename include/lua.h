@@ -215,6 +215,7 @@ LUA_API void  (lua_pushcclosure) (lua_State *L, lua_CFunction fn, int n);
 LUA_API void  (lua_pushboolean) (lua_State *L, int b);
 LUA_API void  (lua_pushlightuserdata) (lua_State *L, void *p);
 LUA_API int   (lua_pushthread) (lua_State *L);
+LUA_API const char *(lua_pushsubstring) (lua_State *L, int idx, size_t start, size_t len);
 
 
 /*
@@ -263,6 +264,7 @@ LUA_API int   (lua_load) (lua_State *L, lua_Reader reader, void *dt,
                                         const char *mode);
 
 LUA_API int (lua_dump) (lua_State *L, lua_Writer writer, void *data);
+LUA_API int (lua_dump53) (lua_State *L, lua_Writer writer, void *data, int strip);
 
 
 /*
@@ -273,6 +275,7 @@ LUA_API int  (lua_yieldk) (lua_State *L, int nresults, int ctx,
 #define lua_yield(L,n)		lua_yieldk(L, (n), 0, NULL)
 LUA_API int  (lua_resume) (lua_State *L, lua_State *from, int narg);
 LUA_API int  (lua_status) (lua_State *L);
+LUA_API int  (lua_isyieldable) (lua_State *L);
 
 /*
 ** garbage-collection function and options
@@ -313,7 +316,6 @@ LUA_API void  (lua_halt) (lua_State *L); /* forcefully halts the Lua state speci
 											do not use the state after calling this - close it immediately */
 LUA_API void  (lua_externalerror) (lua_State *L, const char * message); /* throws an error into a running state - meant to be run from a different thread */
 LUA_API void  (lua_setlockstate) (lua_State *L, int enabled); /* enables/disables lua_lock */
-
 
 
 

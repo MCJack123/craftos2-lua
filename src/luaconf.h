@@ -201,7 +201,7 @@
 @* of a function in debug information.
 ** CHANGE it if you want a different size.
 */
-#define LUA_IDSIZE	60
+#define LUA_IDSIZE	30
 
 
 /*
@@ -544,7 +544,9 @@
 ** without modifying the main part of the file.
 */
 
-
+//#include <assert.h>
+//#define lua_assert(c) assert(c)
+//#define LUA_DEBUG_VM 1
 
 #endif
 
