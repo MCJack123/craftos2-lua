@@ -369,7 +369,8 @@ LUA_API lua_Unsigned lua_tounsignedx (lua_State *L, int idx, int *isnum) {
   if (tonumber(L, o, &n)) {
     lua_Unsigned res;
     lua_Number num = nvalue(o);
-    lua_number2unsigned(res, num);
+    //lua_number2unsigned(res, num);
+    res = (lua_Unsigned)floor(num);
     if (isnum) *isnum = 1;
     return res;
   }
@@ -561,8 +562,10 @@ LUA_API const char *lua_pushsubstring (lua_State *L, int idx, size_t start, size
   bitmap_unit *bitmap;
   int i, j;
   global_State *g;
+  l_mem olddebt;
   lua_lock(L);
   luaC_checkGC(L);
+  g = G(L);
   o = index2addr(L, idx);
   switch (ttype(o)) {
     case LUA_TSHRSTR: case LUA_TLNGSTR: str = rawtsvalue(o); break;
@@ -579,7 +582,7 @@ LUA_API const char *lua_pushsubstring (lua_State *L, int idx, size_t start, size
       break;
     }
   }
-  for (cluster = G(L)->ssfreecluster; ss == NULL; cluster = nextsscluster(cluster)) {
+  for (cluster = g->ssfreecluster; ss == NULL; cluster = nextsscluster(cluster)) {
     bitmap = (bitmap_unit*)cluster + BITMAP_SKIP;
     /* search for unused entry in cluster */
     for (i = 0; i < SUBSTR_CLUSTER_SIZE / BITMAP_UNIT_SIZE; i++) {
@@ -594,7 +597,9 @@ LUA_API const char *lua_pushsubstring (lua_State *L, int idx, size_t start, size
     }
     if (ss != NULL) break;
     if (nextsscluster(cluster) == NULL) {  /* need new cluster? */
+      olddebt = g->GCdebt;
       next = luaM_newvector(L, SUBSTR_CLUSTER_SIZE, TString);
+      g->GCdebt = olddebt;
       memset(next, 0, SUBSTR_CLUSTER_SIZE * sizeof(TString));
       nextsscluster(cluster) = next;  /* chain next cluster in list */
       nextsscluster(next) = NULL;  /* ensure next pointer is NULL */
@@ -603,7 +608,6 @@ LUA_API const char *lua_pushsubstring (lua_State *L, int idx, size_t start, size
       nextsscluster(cluster) = next;
     }
   }
-  g = G(L);
   g->ssfreecluster = cluster;
   ss->tsr.marked = luaC_white(g);
   ss->tsr.tt = LUA_TSUBSTR;

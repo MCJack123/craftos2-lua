@@ -698,24 +698,37 @@ static void add_s (MatchState *ms, luaL_Buffer *b, const char *s,
 }
 
 
-static void add_value (MatchState *ms, luaL_Buffer *b, const char *s,
+struct gsub_state {
+  MatchState ms;
+  luaL_Buffer b;
+  size_t n;
+  const char *src;
+  const char *laste;
+};
+
+
+static int str_gsub (lua_State *L);
+
+
+static void add_value (struct gsub_state *state, const char *s,
                                        const char *e, int tr) {
-  lua_State *L = ms->L;
+  lua_State *L = state->ms.L;
   switch (tr) {
     case LUA_TFUNCTION: {
       int n;
       lua_pushvalue(L, 3);
-      n = push_captures(ms, s, e);
-      lua_call(L, n, 1);
+      n = push_captures(&state->ms, s, e);
+      state->laste = e;
+      lua_callk(L, n, 1, 1, str_gsub);
       break;
     }
     case LUA_TTABLE: {
-      push_onecapture(ms, 0, s, e);
+      push_onecapture(&state->ms, 0, s, e);
       lua_gettable(L, 3);
       break;
     }
     default: {  /* LUA_TNUMBER or LUA_TSTRING */
-      add_s(ms, b, s, e);
+      add_s(&state->ms, &state->b, s, e);
       return;
     }
   }
@@ -725,51 +738,67 @@ static void add_value (MatchState *ms, luaL_Buffer *b, const char *s,
   }
   else if (!lua_isstring(L, -1))
     luaL_error(L, "invalid replacement value (a %s)", luaL_typename(L, -1));
-  luaL_addvalue(b);  /* add result to accumulator */
+  luaL_addvalue(&state->b);  /* add result to accumulator */
 }
 
 
-static int str_gsub (lua_State *L) {
+int str_gsub (lua_State *L) {
   size_t srcl, lp;
-  const char *src = luaL_checklstring(L, 1, &srcl);
+  const char *_src = luaL_checklstring(L, 1, &srcl);
   const char *p = luaL_checklstring(L, 2, &lp);
   int tr = lua_type(L, 3);
   size_t max_s = luaL_optinteger(L, 4, srcl+1);
   int anchor = (*p == '^');
-  size_t n = 0;
-  MatchState ms;
-  luaL_Buffer b;
+  struct gsub_state * state;
+  const char *e;
   luaL_argcheck(L, tr == LUA_TNUMBER || tr == LUA_TSTRING ||
                    tr == LUA_TFUNCTION || tr == LUA_TTABLE, 3,
                       "string/function/table expected");
-  luaL_buffinit(L, &b);
   if (anchor) {
     p++; lp--;  /* skip anchor character */
   }
-  ms.L = L;
-  ms.matchdepth = MAXCCALLS;
-  ms.src_init = src;
-  ms.src_end = src+srcl;
-  ms.p_end = p + lp;
-  while (n < max_s) {
-    const char *e;
-    ms.level = 0;
-    lua_assert(ms.matchdepth == MAXCCALLS);
-    e = match(&ms, src, p);
-    if (e) {
-      n++;
-      add_value(&ms, &b, src, e, tr);
+  if (lua_getctx(L, NULL) == LUA_YIELD) {
+    state = lua_touserdata(L, 5);
+    e = state->laste;
+    /* finish add_value */
+    if (!lua_toboolean(L, -1)) {  /* nil or false? */
+      lua_pop(L, 1);
+      lua_pushlstring(L, state->src, e - state->src);  /* keep original text */
     }
-    if (e && e>src) /* non empty match? */
-      src = e;  /* skip it */
-    else if (src < ms.src_end)
-      luaL_addchar(&b, *src++);
+    else if (!lua_isstring(L, -1))
+      luaL_error(L, "invalid replacement value (a %s)", luaL_typename(L, -1));
+    luaL_addvalue(&state->b);  /* add result to accumulator */
+    goto resume;
+  }
+  lua_settop(L, 4);
+  state = lua_newuserdata(L, sizeof(struct gsub_state));
+  luaL_buffinit(L, &state->b);
+  state->n = 0;
+  state->src = _src;
+  state->ms.L = L;
+  state->ms.matchdepth = MAXCCALLS;
+  state->ms.src_init = _src;
+  state->ms.src_end = _src+srcl;
+  state->ms.p_end = p + lp;
+  while (state->n < max_s) {
+    state->ms.level = 0;
+    lua_assert(ms.matchdepth == MAXCCALLS);
+    e = match(&state->ms, state->src, p);
+    if (e) {
+      state->n++;
+      add_value(state, state->src, e, tr);
+    }
+resume:
+    if (e && e>state->src) /* non empty match? */
+      state->src = e;  /* skip it */
+    else if (state->src < state->ms.src_end)
+      luaL_addchar(&state->b, *state->src++);
     else break;
     if (anchor) break;
   }
-  luaL_addlstring(&b, src, ms.src_end-src);
-  luaL_pushresult(&b);
-  lua_pushinteger(L, n);  /* number of substitutions */
+  luaL_addlstring(&state->b, state->src, state->ms.src_end-state->src);
+  luaL_pushresult(&state->b);
+  lua_pushinteger(L, state->n);  /* number of substitutions */
   return 2;
 }
 

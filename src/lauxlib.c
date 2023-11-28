@@ -175,8 +175,12 @@ LUALIB_API int luaL_argerror_ (lua_State *L, int narg, const char *extramsg) {
 
 
 static int typeerror (lua_State *L, int narg, const char *tname) {
-  const char *msg = lua_pushfstring(L, "expected %s, got %s",
-                                    tname, luaL_typename(L, narg));
+  const char *msg, *tn = NULL;
+  if (luaL_getmetafield(L, narg, "__name"))
+    tn = lua_tostring(L, -1);
+  if (!tn)
+    tn = luaL_typename(L, narg);
+  msg = lua_pushfstring(L, "expected %s, got %s", tname, tn);
   return luaL_argerror(L, narg, msg);
 }
 

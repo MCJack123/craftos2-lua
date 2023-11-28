@@ -249,6 +249,7 @@ static void close_state (lua_State *L) {
   global_State *g = G(L);
   TString *cluster = g->ropeclusters, *next;
   TString *sscluster = g->ssclusters, *ssnext;
+  l_mem olddebt;
   luaF_close(L, L->stack);  /* close all upvalues for this thread */
   luaC_freeallobjects(L);  /* collect all objects */
   if (g->version)  /* closing a fully built state? */
@@ -256,6 +257,7 @@ static void close_state (lua_State *L) {
   luaM_freearray(L, G(L)->strt.hash, G(L)->strt.size);
   luaZ_freebuffer(L, &g->buff);
   freestack(L);
+  olddebt = g->GCdebt;
   luaM_freearray(L, g->ropestack, g->ropestacksize);
   while (cluster != NULL) {
     next = *(TString**)cluster;
@@ -267,6 +269,7 @@ static void close_state (lua_State *L) {
     luaM_free(L, sscluster);
     sscluster = ssnext;
   }
+  g->GCdebt = olddebt;
   //lua_assert(gettotalbytes(g) == sizeof(LG));
   if (g->lockstate) lua_unlock(L);
   _lua_freelock(g->lock);
@@ -291,9 +294,9 @@ LUA_API lua_State *lua_newthread (lua_State *L) {
   setpvalue(&ptmp, (void *)&KEY_HOOK)
   hookt = luaH_get(L, hvalue(&G(L)->l_registry), &ptmp);
   if (hookt != luaO_nilobject) {
-    setobj(L, &ptmp, cast(GCObject*, L));
+    setthvalue(L, &ptmp, L);
     val = luaH_get(L, hvalue(hookt), &ptmp);
-    setobj(L, &ptmp, cast(GCObject*, L1));
+    sethvalue(L, &ptmp, L1);
     setobj(L, luaH_set(L, hvalue(hookt), &ptmp), val);
   }
   resethookcount(L1);
