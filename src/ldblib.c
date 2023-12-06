@@ -282,9 +282,7 @@ static int gethooktable(lua_State *L) {
 }
 
 
-static int hook_continue(lua_State *L) {
-
-}
+static int hook_continue(lua_State *L) {} // placeholder
 
 
 static void hookf (lua_State *L, lua_Debug *ar) {
@@ -299,8 +297,7 @@ static void hookf (lua_State *L, lua_Debug *ar) {
       lua_pushinteger(L, ar->currentline);
     else lua_pushnil(L);
     lua_assert(lua_getinfo(L, "lS", ar));
-    //lua_callk(L, 2, 0, 1, hook_continue);
-    lua_call(L, 2, 0);
+    lua_callk(L, 2, 0, ar->event, hook_continue);
   }
 }
 
@@ -404,6 +401,44 @@ static int db_traceback (lua_State *L) {
     luaL_traceback(L, L1, msg, level);
   }
   return 1;
+}
+
+
+static int aux_fenv(lua_State *L, int idx, int setidx) {
+  int i;
+  const char *name;
+  for (i = 1; (name = lua_getupvalue(L, idx, i)); i++) {
+    if (strcmp(name, "_ENV") == 0) {
+      if (setidx) {
+        /* this is disgusting, because we need upvaluejoin, which apparently only works on Lua functions */
+        luaL_loadstring(L, "return _ENV");
+        lua_pushvalue(L, setidx);
+        lua_setupvalue(L, -2, 1);
+        lua_upvaluejoin(L, idx, i, -1, 1);
+        return 0;
+      } else {
+        return 1;
+      }
+    }
+    lua_pop(L, 1);
+  }
+  if (setidx) return 0;
+  else {
+    lua_pushglobaltable(L);
+    return 1;
+  }
+}
+
+
+static int db_getfenv (lua_State *L) {
+  luaL_checktype(L, 1, LUA_TFUNCTION);
+  return aux_fenv(L, 1, 0);
+}
+
+static int db_setfenv (lua_State *L) {
+  luaL_checktype(L, 1, LUA_TFUNCTION);
+  luaL_checkany(L, 2);
+  return aux_fenv(L, 1, 2);
 }
 
 

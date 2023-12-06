@@ -1060,6 +1060,9 @@ static int str_format (lua_State *L) {
 /* size of a lua_Integer */
 #define SZINT   ((int)sizeof(lua_Integer))
 
+/* size of a lua_Unsigned */
+#define SZUINT   ((int)sizeof(lua_Unsigned))
+
 
 /* dummy union to get native endianness */
 static const union {
@@ -1295,7 +1298,7 @@ static int str_pack(lua_State *L) {
         }
         case Kuint: {  /* unsigned integers */
             lua_Integer n = luaL_checkinteger(L, arg);
-            if (size < SZINT)  /* need overflow check? */
+            if (size < SZUINT)  /* need overflow check? */
                 luaL_argcheck(L, (lua_Unsigned)n < ((lua_Unsigned)1 << (size * NB)),
                               arg, "unsigned overflow");
             packint(&b, (lua_Unsigned)n, h.islittle, size, 0);

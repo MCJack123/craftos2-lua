@@ -285,7 +285,7 @@ static int tmove (lua_State *L) {
     n = e - f + 1;  /* number of elements to move */
     luaL_argcheck(L, t <= 0x7FFFFFFF - n + 1, 4,
                   "destination wrap around");
-    if (t > e || t <= f || (tt != 1 && !lua_equal(L, 1, tt))) {
+    if (t > e || t <= f || (tt != 1 && !lua_rawequal(L, 1, tt))) {
       i = ctx >> 1;
       if (ctx % 2) {
         luaL_iseti(L, tt, t + i, i * 2 + 2, tmove);
@@ -684,7 +684,7 @@ static const luaL_Reg tab_funcs[] = {
 
 
 LUALIB_API int luaopen_table (lua_State *L) {
-  luaL_register(L, LUA_TABLIBNAME, tab_funcs);
+  luaL_newlib(L, tab_funcs);
   return 1;
 }
 

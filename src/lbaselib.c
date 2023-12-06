@@ -448,6 +448,70 @@ static int luaB_tostring (lua_State *L) {
 }
 
 
+static int aux_fenv(lua_State *L, int idx, int setidx) {
+  int i;
+  const char *name;
+  for (i = 1; (name = lua_getupvalue(L, idx, i)); i++) {
+    if (strcmp(name, "_ENV") == 0) {
+      if (setidx) {
+        /* this is disgusting, because we need upvaluejoin, which apparently only works on Lua functions */
+        luaL_loadstring(L, "return _ENV");
+        lua_pushvalue(L, setidx);
+        lua_setupvalue(L, -2, 1);
+        lua_upvaluejoin(L, idx, i, -1, 1);
+        return 0;
+      } else {
+        return 1;
+      }
+    }
+    lua_pop(L, 1);
+  }
+  if (setidx) return 0;
+  else {
+    lua_pushglobaltable(L);
+    return 1;
+  }
+}
+
+
+static int luaB_getfenv (lua_State *L) {
+  switch (lua_type(L, 1)) {
+    case LUA_TNUMBER: {
+      lua_Debug ar;
+      if (!lua_getstack(L, lua_tointeger(L, 1), &ar))
+        luaL_argerror(L, 1, "invalid level");
+      lua_getinfo(L, "f", &ar);
+      return aux_fenv(L, lua_absindex(L, -1), 0);
+    }
+    case LUA_TFUNCTION:
+      return aux_fenv(L, 1, 0);
+    default: {
+      const char *msg = lua_pushfstring(L, "number or function expected, got %s", luaL_typename(L, 1));
+      return luaL_argerror(L, 1, msg);
+    }
+  }
+}
+
+static int luaB_setfenv (lua_State *L) {
+  luaL_checkany(L, 2);
+  switch (lua_type(L, 1)) {
+    case LUA_TNUMBER: {
+      lua_Debug ar;
+      if (!lua_getstack(L, lua_tointeger(L, 1), &ar))
+        luaL_argerror(L, 1, "invalid level");
+      lua_getinfo(L, "f", &ar);
+      return aux_fenv(L, lua_absindex(L, -1), 2);
+    }
+    case LUA_TFUNCTION:
+      return aux_fenv(L, 1, 2);
+    default: {
+      const char *msg = lua_pushfstring(L, "number or function expected, got %s", luaL_typename(L, 1));
+      return luaL_argerror(L, 1, msg);
+    }
+  }
+}
+
+
 static const luaL_Reg base_funcs[] = {
   {"assert", luaB_assert},
   {"collectgarbage", luaB_collectgarbage},
@@ -474,6 +538,8 @@ static const luaL_Reg base_funcs[] = {
   {"unpack", tunpack},
   {"__inext", ipairsaux},
   {"xpcall", luaB_xpcall},
+  {"getfenv", luaB_getfenv},
+  {"setfenv", luaB_setfenv},
   {NULL, NULL}
 };
 

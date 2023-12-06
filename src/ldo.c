@@ -216,7 +216,6 @@ void luaD_shrinkstack (lua_State *L) {
 }
 
 
-// TODO: Reimplement yielding from hooks (how does this work in 5.2?)
 void luaD_hook (lua_State *L, int event, int line) {
   lua_Hook hook = L->hook;
   if (hook && L->allowhook) {
@@ -232,10 +231,16 @@ void luaD_hook (lua_State *L, int event, int line) {
     lua_assert(ci->top <= L->stack_last);
     L->allowhook = 0;  /* cannot call hooks inside a hook */
     ci->callstatus |= CIST_HOOKED;
+    ci->old_top = top;
+    ci->old_ci_top = ci_top;
+    if (event >= LUA_HOOKERROR)
+      L->nny++;
     lua_unlock(L);
     (*hook)(L, &ar);
     lua_lock(L);
     lua_assert(!L->allowhook);
+    if (event >= LUA_HOOKERROR)
+      L->nny--;
     L->allowhook = 1;
     ci->top = restorestack(L, ci_top);
     L->top = restorestack(L, top);
@@ -324,6 +329,7 @@ int luaD_precall (lua_State *L, StkId func, int nresults) {
       ci->nresults = nresults;
       ci->func = restorestack(L, funcr);
       ci->top = L->top + LUA_MINSTACK;
+      ci->hook = 0xFF;
       lua_assert(ci->top <= L->stack_last);
       ci->callstatus = 0;
       luaC_checkGC(L);  /* stack grow uses memory */
@@ -356,6 +362,7 @@ int luaD_precall (lua_State *L, StkId func, int nresults) {
       ci->func = func;
       ci->u.l.base = base;
       ci->top = base + p->maxstacksize;
+      ci->hook = 0xFF;
       lua_assert(ci->top <= L->stack_last);
       ci->u.l.savedpc = p->code;  /* starting point */
       ci->callstatus = CIST_LUA;
@@ -378,16 +385,89 @@ int luaD_poscall (lua_State *L, StkId firstResult) {
   int wanted, i;
   CallInfo *ci = L->ci;
   if (L->hookmask & (LUA_MASKRET | LUA_MASKLINE)) {
-    if (L->hookmask & LUA_MASKRET) {
+    if ((L->hookmask & LUA_MASKRET) && !(ci->callstatus & CIST_HOOKED)) {
       ptrdiff_t fr = savestack(L, firstResult);  /* hook may change stack */
+      ci->old_fr = fr;
       luaD_hook(L, LUA_HOOKRET, -1);
       firstResult = restorestack(L, fr);
     }
     L->oldpc = ci->previous->u.l.savedpc;  /* 'oldpc' for caller function */
   }
+hook_return:
   res = ci->func;  /* res == final position of 1st result */
   wanted = ci->nresults;
   L->ci = ci = ci->previous;  /* back to caller */
+  if (ci->callstatus & CIST_HOOKED) {  /* hook yield w/continuation? */
+    /* finish hook */
+    L->allowhook = 1;
+    ci->top = restorestack(L, ci->old_ci_top);
+    L->top = restorestack(L, ci->old_top);
+    ci->callstatus &= ~CIST_HOOKED;
+    /* finish action after hook */
+    switch (ci->hook) {
+      case LUA_HOOKCOUNT:
+      case LUA_HOOKLINE:
+        ci->u.l.savedpc--;  /* reexecute instruction... */
+        ci->callstatus |= CIST_HOOKYIELD;  /* ...without hooks */
+        break;
+      case LUA_HOOKCALL:
+        if (!isLua(ci)) {  /* C function? */
+          /* call function since luaD_precall yielded before calling */
+          int n;
+          lua_CFunction f;
+          if (ttislcf(ci->func)) f = fvalue(ci->func);
+          else f = clCvalue(ci->func)->f;
+          lua_unlock(L);
+          n = (*f)(L);  /* do the actual call */
+          lua_lock(L);
+          return luaD_poscall(L, L->top - n);
+        } else {
+          ci->u.l.savedpc--;
+        }
+        break;
+      case LUA_HOOKTAILCALL:
+        if (!isLua(ci)) {  /* C function? */
+          /* call function since luaD_precall yielded before calling */
+          int n;
+          lua_CFunction f;
+          if (ttislcf(ci->func)) f = fvalue(ci->func);
+          else f = clCvalue(ci->func)->f;
+          lua_unlock(L);
+          n = (*f)(L);  /* do the actual call */
+          lua_lock(L);
+          return luaD_poscall(L, L->top - n);
+        } else {
+          /* tail call: put called frame (n) in place of caller one (o) */
+          CallInfo *nci = L->ci;  /* called frame */
+          CallInfo *oci = nci->previous;  /* caller frame */
+          StkId nfunc = nci->func;  /* called function */
+          StkId ofunc = oci->func;  /* caller function */
+          /* last stack slot filled by 'precall' */
+          StkId lim = nci->u.l.base + getproto(nfunc)->numparams;
+          int aux;
+          ci->u.l.savedpc--;
+          /* close all upvalues from previous call */
+          if (clLvalue(ofunc)->p->sizep > 0) luaF_close(L, oci->u.l.base);
+          /* move new frame into old one */
+          for (aux = 0; nfunc + aux < lim; aux++)
+            setobjs2s(L, ofunc + aux, nfunc + aux);
+          oci->u.l.base = ofunc + (nci->u.l.base - nfunc);  /* correct base */
+          oci->top = L->top = ofunc + (L->top - nfunc);  /* correct top */
+          oci->u.l.savedpc = nci->u.l.savedpc;
+          oci->callstatus |= CIST_TAIL;  /* function was tail called */
+          ci = L->ci = oci;  /* remove new frame */
+          lua_assert(L->top == oci->u.l.base + getproto(ofunc)->maxstacksize);
+        }
+        break;
+      case LUA_HOOKRET:
+        /* return again */
+        firstResult = restorestack(L, ci->old_fr);
+        L->oldpc = ci->previous->u.l.savedpc;  /* 'oldpc' for caller function */
+        goto hook_return;
+    }
+    ci->hook = 0xFF;
+    return 1;  /* no return values, so skip below */
+  }
   /* move results to correct place */
   for (i = wanted; i != 0 && firstResult < L->top; i--)
     setobjs2s(L, res++, firstResult++);

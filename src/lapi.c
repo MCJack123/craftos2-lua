@@ -978,15 +978,18 @@ LUA_API void lua_callk (lua_State *L, int nargs, int nresults, int ctx,
                         lua_CFunction k) {
   StkId func;
   lua_lock(L);
-  api_check(L, k == NULL || !isLua(L->ci),
-    "cannot use continuations inside hooks");
   api_checknelems(L, nargs+1);
   //api_check(L, L->status == LUA_OK, "cannot do calls on non-normal thread");
   checkresults(L, nargs, nresults);
   func = L->top - (nargs+1);
   if (k != NULL && L->nny == 0) {  /* need to prepare continuation? */
-    L->ci->u.c.k = k;  /* save continuation */
-    L->ci->u.c.ctx = ctx;  /* save context */
+    if (L->ci->callstatus & CIST_HOOKED) {  /* in hook? */
+      /* no continuation */
+      L->ci->hook = ctx;  /* save hook - context must be ar->event */
+    } else {
+      L->ci->u.c.k = k;  /* save continuation */
+      L->ci->u.c.ctx = ctx;  /* save context */
+    }
     luaD_call(L, func, nresults, 1);  /* do the call */
   }
   else  /* no continuation or no yieldable */

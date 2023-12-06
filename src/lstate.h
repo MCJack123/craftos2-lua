@@ -78,6 +78,10 @@ typedef struct CallInfo {
   struct CallInfo *previous, *next;  /* dynamic call link */
   short nresults;  /* expected number of results from this function */
   lu_byte callstatus;
+  lu_byte hook;  /* used for continuations if a hook yields */
+  ptrdiff_t old_top;
+  ptrdiff_t old_ci_top;
+  ptrdiff_t old_fr;
   ptrdiff_t extra;
   union {
     struct {  /* only for Lua functions */
