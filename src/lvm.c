@@ -75,9 +75,12 @@ static void traceexec (lua_State *L) {
     resethookcount(L);  /* reset count */
   if (ci->callstatus & CIST_HOOKYIELD) {  /* called hook last time? */
     ci->callstatus &= ~CIST_HOOKYIELD;  /* erase mark */
-    return;  /* do not call hook again (VM yielded, so it did not move) */
-  }
-  if (counthook)
+    if (ci->hook == LUA_HOOKLINE) {
+      ci->hook = 0xFF;
+      return;  /* do not call hook again (VM yielded, so it did not move) */
+    }
+    ci->hook = 0xFF;
+  } else if (counthook)
     luaD_hook(L, LUA_HOOKCOUNT, -1);  /* call count hook */
   if (mask & LUA_MASKLINE) {
     Proto *p = ci_func(ci)->p;
@@ -498,10 +501,17 @@ static void pushclosure (lua_State *L, Proto *p, UpVal **encup, StkId base,
 */
 void luaV_finishOp (lua_State *L) {
   CallInfo *ci = L->ci;
-  StkId base = ci->u.l.base;
-  Instruction inst = *(ci->u.l.savedpc - 1);  /* interrupted instruction */
-  OpCode op = GET_OPCODE(inst);
+  StkId base;
+  Instruction inst;  /* interrupted instruction */
+  OpCode op;
   if (ci->callstatus & CIST_HOOKYIELD) return;  /* if a hook yielded, the instruction hasn't run yet */
+  if (ci->hook != 0xFF) {
+    ci->hook = 0xFF;
+    return;
+  }
+  base = ci->u.l.base;
+  inst = *(ci->u.l.savedpc - 1);  /* interrupted instruction */
+  op = GET_OPCODE(inst);
   switch (op) {  /* finish its execution */
     case OP_ADD: case OP_SUB: case OP_MUL: case OP_DIV:
     case OP_MOD: case OP_POW: case OP_UNM: case OP_LEN:

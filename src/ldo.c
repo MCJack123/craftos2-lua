@@ -465,7 +465,6 @@ hook_return:
         L->oldpc = ci->previous->u.l.savedpc;  /* 'oldpc' for caller function */
         goto hook_return;
     }
-    ci->hook = 0xFF;
     return 1;  /* no return values, so skip below */
   }
   /* move results to correct place */
