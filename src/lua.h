@@ -301,6 +301,8 @@ LUA_API int (lua_gc) (lua_State *L, int what, int data);
 ** miscellaneous functions
 */
 
+#define LUA_DISABLE_BYTECODE (1 << 0)
+
 LUA_API int   (lua_error) (lua_State *L);
 
 LUA_API int   (lua_next) (lua_State *L, int idx);
@@ -316,6 +318,7 @@ LUA_API void  (lua_halt) (lua_State *L); /* forcefully halts the Lua state speci
 											do not use the state after calling this - close it immediately */
 LUA_API void  (lua_externalerror) (lua_State *L, const char * message); /* throws an error into a running state - meant to be run from a different thread */
 LUA_API void  (lua_setlockstate) (lua_State *L, int enabled); /* enables/disables lua_lock */
+LUA_API void  (lua_setdisableflags)(lua_State *L, unsigned char flags); /* sets flags to disable features; bit 0 = bytecode load/dump */
 
 
 

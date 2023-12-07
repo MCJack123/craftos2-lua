@@ -1091,7 +1091,7 @@ LUA_API int lua_dump53 (lua_State *L, lua_Writer writer, void *data, int strip) 
   lua_lock(L);
   api_checknelems(L, 1);
   o = L->top - 1;
-  if (isLfunction(o))
+  if (isLfunction(o) && !(G(L)->disabled & 1))
     status = luaU_dump(L, getproto(o), writer, data, strip);
   else
     status = 1;
@@ -1398,6 +1398,12 @@ LUA_API void lua_setlockstate(lua_State *L, int enabled) {
   } else {
     G(L)->lockstate = G(L)->lockstate >= 2 ? 0 : 1;
   }
+  lua_unlock(L);
+}
+
+LUA_API void lua_setdisableflags(lua_State *L, unsigned char flags) {
+  lua_lock(L);
+  G(L)->disabled = flags;
   lua_unlock(L);
 }
 

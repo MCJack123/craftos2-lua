@@ -735,7 +735,7 @@ struct SParser {  /* data to `f_parser' */
 };
 
 static void checkmode (lua_State *L, const char *mode, const char *x) {
-  if (mode && strchr(mode, x[0]) == NULL) {
+  if ((mode && strchr(mode, x[0]) == NULL) || ((G(L)->disabled & 1) && x[0] == 'b')) {
     luaO_pushfstring(L,
        "attempt to load a %s chunk (mode is " LUA_QS ")", x, mode);
     luaD_throw(L, LUA_ERRSYNTAX);

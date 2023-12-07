@@ -361,6 +361,7 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud) {
   g->lock = _lua_newlock();
   g->lockstate = 0;
   g->haltstate = 0;
+  g->disabled = 0;
   g->ropestacksize = 8;
   for (i=0; i < 14; i++) g->mt[i] = NULL;
   if (luaD_rawrunprotected(L, f_luaopen, NULL) != LUA_OK) {

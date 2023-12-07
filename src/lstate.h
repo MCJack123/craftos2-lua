@@ -157,8 +157,9 @@ typedef struct global_State {
   struct Table *mt[14];  /* metatables for basic types */
   /* all members below this are added in craftos2-lua */
   void* lock;  /* pointer to lock */
-  int lockstate;  /* 0 = unlocked, 1 = locked */
-  int haltstate;  /* set to indicate state execution should be halted (1 = halt all, 2 = throw error) */
+  lu_byte lockstate;  /* 0 = unlocked, 1 = locked */
+  lu_byte haltstate;  /* set to indicate state execution should be halted (1 = halt all, 2 = throw error) */
+  lu_byte disabled;  /* bit flags for features to disable: bit 0 = bytecode loading/dumping */
   const char * haltmessage;  /* if haltstate is 2, a message to show as the error message */
   TString **ropestack;  /* temporary stack used to store ropes when constructing strings */
   int ropestacksize;  /* size of above stack */

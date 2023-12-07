@@ -461,6 +461,8 @@ static luaL_Reg dblib[] = {
   {"setupvalue", db_setupvalue},
   {"traceback", db_traceback},
   {"unsetbreakpoint", NULL},
+  {"getfenv", db_getfenv},
+  {"setfenv", db_setfenv},
   {NULL, NULL}
 };
 
