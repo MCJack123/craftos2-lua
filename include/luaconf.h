@@ -544,7 +544,7 @@
 ** without modifying the main part of the file.
 */
 
-#define LUAI_MAXCCALLS 2000
+#define LUAI_MAXCCALLS 1000
 
 #endif
 
