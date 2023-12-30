@@ -499,12 +499,58 @@ static void pushclosure (lua_State *L, Proto *p, UpVal **encup, StkId base,
 /*
 ** finish execution of an opcode interrupted by an yield
 */
-void luaV_finishOp (lua_State *L) {
+int luaV_finishOp (lua_State *L) {
   CallInfo *ci = L->ci;
   StkId base;
   Instruction inst;  /* interrupted instruction */
   OpCode op;
-  if (ci->callstatus & CIST_HOOKYIELD) return;  /* if a hook yielded, the instruction hasn't run yet */
+  if (ci->callstatus & CIST_HOOKED) {  /* hook yield w/continuation? */
+    /* finish hook */
+    L->allowhook = 1;
+    ci->top = restorestack(L, ci->old_ci_top);
+    L->top = restorestack(L, ci->old_top);
+    ci->callstatus &= ~CIST_HOOKED;
+    /* finish action after hook */
+    switch (ci->hook) {
+      case LUA_HOOKCOUNT:
+      case LUA_HOOKLINE:
+        ci->u.l.savedpc--;  /* reexecute instruction... */
+        ci->callstatus |= CIST_HOOKYIELD;  /* ...without hooks */
+        break;
+      case LUA_HOOKCALL:
+        ci->u.l.savedpc--;  /* correct 'pc' */
+        break;
+      case LUA_HOOKTAILCALL: {
+        /* tail call: put called frame (n) in place of caller one (o) */
+        CallInfo *nci = L->ci;  /* called frame */
+        CallInfo *oci = nci->previous;  /* caller frame */
+        StkId nfunc = nci->func;  /* called function */
+        StkId ofunc = oci->func;  /* caller function */
+        /* last stack slot filled by 'precall' */
+        StkId lim = nci->u.l.base + getproto(nfunc)->numparams;
+        int aux;
+        ci->u.l.savedpc--;
+        /* close all upvalues from previous call */
+        if (clLvalue(ofunc)->p->sizep > 0) luaF_close(L, oci->u.l.base);
+        /* move new frame into old one */
+        for (aux = 0; nfunc + aux < lim; aux++)
+          setobjs2s(L, ofunc + aux, nfunc + aux);
+        oci->u.l.base = ofunc + (nci->u.l.base - nfunc);  /* correct base */
+        oci->top = L->top = ofunc + (L->top - nfunc);  /* correct top */
+        oci->u.l.savedpc = nci->u.l.savedpc;
+        oci->callstatus |= CIST_TAIL;  /* function was tail called */
+        ci = L->ci = oci;  /* remove new frame */
+        lua_assert(L->top == oci->u.l.base + getproto(ofunc)->maxstacksize);
+        break;
+      } case LUA_HOOKRET:
+        /* retry return with hooks disabled */
+        L->allowhook = 0;
+        luaD_poscall(L, restorestack(L, ci->old_fr));
+        L->allowhook = 1;
+        return 1;  /* don't execute after */
+    }
+    return 0;
+  }
   if (ci->hook != 0xFF) {
     ci->hook = 0xFF;
     return;
@@ -560,6 +606,7 @@ void luaV_finishOp (lua_State *L) {
       break;
     default: lua_assert(0);
   }
+  return 0;
 }
 
 

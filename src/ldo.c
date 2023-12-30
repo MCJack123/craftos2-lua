@@ -385,7 +385,7 @@ int luaD_poscall (lua_State *L, StkId firstResult) {
   int wanted, i;
   CallInfo *ci = L->ci;
   if (L->hookmask & (LUA_MASKRET | LUA_MASKLINE)) {
-    if ((L->hookmask & LUA_MASKRET) && !(ci->callstatus & CIST_HOOKED)) {
+    if (L->hookmask & LUA_MASKRET) {
       ptrdiff_t fr = savestack(L, firstResult);  /* hook may change stack */
       ci->old_fr = fr;
       luaD_hook(L, LUA_HOOKRET, -1);
@@ -393,80 +393,9 @@ int luaD_poscall (lua_State *L, StkId firstResult) {
     }
     L->oldpc = ci->previous->u.l.savedpc;  /* 'oldpc' for caller function */
   }
-hook_return:
   res = ci->func;  /* res == final position of 1st result */
   wanted = ci->nresults;
   L->ci = ci = ci->previous;  /* back to caller */
-  if (ci->callstatus & CIST_HOOKED) {  /* hook yield w/continuation? */
-    /* finish hook */
-    L->allowhook = 1;
-    ci->top = restorestack(L, ci->old_ci_top);
-    L->top = restorestack(L, ci->old_top);
-    ci->callstatus &= ~CIST_HOOKED;
-    /* finish action after hook */
-    switch (ci->hook) {
-      case LUA_HOOKCOUNT:
-      case LUA_HOOKLINE:
-        ci->u.l.savedpc--;  /* reexecute instruction... */
-        ci->callstatus |= CIST_HOOKYIELD;  /* ...without hooks */
-        break;
-      case LUA_HOOKCALL:
-        if (!isLua(ci)) {  /* C function? */
-          /* call function since luaD_precall yielded before calling */
-          int n;
-          lua_CFunction f;
-          if (ttislcf(ci->func)) f = fvalue(ci->func);
-          else f = clCvalue(ci->func)->f;
-          lua_unlock(L);
-          n = (*f)(L);  /* do the actual call */
-          lua_lock(L);
-          return luaD_poscall(L, L->top - n);
-        } else {
-          ci->u.l.savedpc--;
-        }
-        break;
-      case LUA_HOOKTAILCALL:
-        if (!isLua(ci)) {  /* C function? */
-          /* call function since luaD_precall yielded before calling */
-          int n;
-          lua_CFunction f;
-          if (ttislcf(ci->func)) f = fvalue(ci->func);
-          else f = clCvalue(ci->func)->f;
-          lua_unlock(L);
-          n = (*f)(L);  /* do the actual call */
-          lua_lock(L);
-          return luaD_poscall(L, L->top - n);
-        } else {
-          /* tail call: put called frame (n) in place of caller one (o) */
-          CallInfo *nci = L->ci;  /* called frame */
-          CallInfo *oci = nci->previous;  /* caller frame */
-          StkId nfunc = nci->func;  /* called function */
-          StkId ofunc = oci->func;  /* caller function */
-          /* last stack slot filled by 'precall' */
-          StkId lim = nci->u.l.base + getproto(nfunc)->numparams;
-          int aux;
-          ci->u.l.savedpc--;
-          /* close all upvalues from previous call */
-          if (clLvalue(ofunc)->p->sizep > 0) luaF_close(L, oci->u.l.base);
-          /* move new frame into old one */
-          for (aux = 0; nfunc + aux < lim; aux++)
-            setobjs2s(L, ofunc + aux, nfunc + aux);
-          oci->u.l.base = ofunc + (nci->u.l.base - nfunc);  /* correct base */
-          oci->top = L->top = ofunc + (L->top - nfunc);  /* correct top */
-          oci->u.l.savedpc = nci->u.l.savedpc;
-          oci->callstatus |= CIST_TAIL;  /* function was tail called */
-          ci = L->ci = oci;  /* remove new frame */
-          lua_assert(L->top == oci->u.l.base + getproto(ofunc)->maxstacksize);
-        }
-        break;
-      case LUA_HOOKRET:
-        /* return again */
-        firstResult = restorestack(L, ci->old_fr);
-        L->oldpc = ci->previous->u.l.savedpc;  /* 'oldpc' for caller function */
-        goto hook_return;
-    }
-    return 1;  /* no return values, so skip below */
-  }
   /* move results to correct place */
   for (i = wanted; i != 0 && firstResult < L->top; i--)
     setobjs2s(L, res++, firstResult++);
@@ -501,6 +430,34 @@ void luaD_call (lua_State *L, StkId func, int nResults, int allowyield) {
 static void finishCcall (lua_State *L) {
   CallInfo *ci = L->ci;
   int n;
+  if (ci->callstatus & CIST_HOOKED) {  /* call hook yielded */
+    /* finish hook */
+    L->allowhook = 1;
+    ci->top = restorestack(L, ci->old_ci_top);
+    L->top = restorestack(L, ci->old_top);
+    ci->callstatus &= ~CIST_HOOKED;
+    switch (ci->hook) {
+      case LUA_HOOKCALL:
+      case LUA_HOOKTAILCALL:
+        /* call function since luaD_precall yielded before calling */
+        int n;
+        lua_CFunction f;
+        if (ttislcf(ci->func)) f = fvalue(ci->func);
+        else f = clCvalue(ci->func)->f;
+        lua_unlock(L);
+        n = (*f)(L);  /* do the actual call */
+        lua_lock(L);
+        luaD_poscall(L, L->top - n);
+        break;
+      case LUA_HOOKRET:
+        /* retry return with hooks disabled */
+        L->allowhook = 0;
+        luaD_poscall(L, restorestack(L, ci->old_fr));
+        L->allowhook = 1;
+        break;
+    }
+    return;
+  }
   lua_assert(ci->u.c.k != NULL);  /* must have a continuation */
   lua_assert(L->nny == 0);
   if (ci->callstatus & CIST_YPCALL) {  /* was inside a pcall? */
@@ -531,8 +488,8 @@ static void unroll (lua_State *L, void *ud) {
     if (!isLua(L->ci))  /* C function? */
       finishCcall(L);
     else {  /* Lua function */
-      luaV_finishOp(L);  /* finish interrupted instruction */
-      luaV_execute(L);  /* execute down to higher C 'boundary' */
+      if (!luaV_finishOp(L))  /* finish interrupted instruction */
+        luaV_execute(L);  /* execute down to higher C 'boundary' */
     }
   }
 }

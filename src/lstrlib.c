@@ -782,7 +782,7 @@ int str_gsub (lua_State *L) {
   state->ms.p_end = p + lp;
   while (state->n < max_s) {
     state->ms.level = 0;
-    lua_assert(ms.matchdepth == MAXCCALLS);
+    lua_assert(state->ms.matchdepth == MAXCCALLS);
     e = match(&state->ms, state->src, p);
     if (e) {
       state->n++;

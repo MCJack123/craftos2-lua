@@ -10,6 +10,7 @@
 
 #include <limits.h>
 #include <stddef.h>
+#include <math.h>
 
 
 #include "lua.h"
