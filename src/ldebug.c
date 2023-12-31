@@ -272,7 +272,8 @@ static int auxgetinfo (lua_State *L, const char *what, lua_Debug *ar,
       case 'f':  /* handled by lua_getinfo */
         break;
       case 'i':
-        ar->instruction = currentpc(ci);
+        if (isLua(ci)) ar->instruction = currentpc(ci);
+        else ar->instruction = 0;
         break;
       default: status = 0;  /* invalid option */
     }
