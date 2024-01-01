@@ -438,7 +438,7 @@ static void finishCcall (lua_State *L) {
     ci->callstatus &= ~CIST_HOOKED;
     switch (ci->hook) {
       case LUA_HOOKCALL:
-      case LUA_HOOKTAILCALL:
+      case LUA_HOOKTAILCALL: {
         /* call function since luaD_precall yielded before calling */
         int n;
         lua_CFunction f;
@@ -449,6 +449,7 @@ static void finishCcall (lua_State *L) {
         lua_lock(L);
         luaD_poscall(L, L->top - n);
         break;
+      }
       case LUA_HOOKRET:
         /* retry return with hooks disabled */
         L->allowhook = 0;

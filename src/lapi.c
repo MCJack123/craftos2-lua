@@ -7,6 +7,7 @@
 
 #include <stdarg.h>
 #include <string.h>
+#include <math.h>
 
 #define lapi_c
 #define LUA_CORE
@@ -370,7 +371,8 @@ LUA_API lua_Unsigned lua_tounsignedx (lua_State *L, int idx, int *isnum) {
     lua_Unsigned res;
     lua_Number num = nvalue(o);
     //lua_number2unsigned(res, num);
-    res = (lua_Unsigned)floor(num);
+    if (num < 0) res = -(lua_Unsigned)fabs(floor(num));
+    else res = (lua_Unsigned)floor(num);
     if (isnum) *isnum = 1;
     return res;
   }
