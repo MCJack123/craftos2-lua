@@ -1529,6 +1529,9 @@ static void retstat (LexState *ls) {
 static void statement (LexState *ls) {
   int line = ls->linenumber;  /* may be needed for error messages */
   enterlevel(ls);
+  if (ls->t.token == TK_NAME && strcmp(getstr(ls->t.seminfo.ts), "goto") == 0
+      && luaX_lookahead(ls) == TK_NAME)
+    ls->t.token = TK_GOTO;
   switch (ls->t.token) {
     case ';': {  /* stat -> ';' (empty statement) */
       luaX_next(ls);  /* skip ';' */
