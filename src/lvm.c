@@ -73,8 +73,7 @@ static void traceexec (lua_State *L) {
   int counthook = ((mask & LUA_MASKCOUNT) && L->hookcount == 0);
   if (counthook)
     resethookcount(L);  /* reset count */
-  if (ci->callstatus & CIST_HOOKYIELD) {  /* called hook last time? */
-    ci->callstatus &= ~CIST_HOOKYIELD;  /* erase mark */
+  if (ci->hook != 0xFF) {  /* called hook last time? */
     if (ci->hook == LUA_HOOKLINE) {
       ci->hook = 0xFF;
       return;  /* do not call hook again (VM yielded, so it did not move) */
@@ -96,7 +95,6 @@ static void traceexec (lua_State *L) {
     if (counthook)
       L->hookcount = 1;  /* undo decrement to zero */
     ci->u.l.savedpc--;  /* undo increment (resume will increment it again) */
-    ci->callstatus |= CIST_HOOKYIELD;  /* mark that it yielded */
     ci->func = L->top - 1;  /* protect stack below results */
     luaD_throw(L, LUA_YIELD);
   }
@@ -514,9 +512,8 @@ int luaV_finishOp (lua_State *L) {
     switch (ci->hook) {
       case LUA_HOOKCOUNT:
       case LUA_HOOKLINE:
-        ci->u.l.savedpc--;  /* reexecute instruction... */
-        ci->callstatus |= CIST_HOOKYIELD;  /* ...without hooks */
-        break;
+        ci->u.l.savedpc--;  /* reexecute instruction */
+        return 0;  /* keep ci->hook so traceexec can avoid running the hook again */
       case LUA_HOOKCALL:
         ci->u.l.savedpc--;  /* correct 'pc' */
         break;
@@ -547,8 +544,10 @@ int luaV_finishOp (lua_State *L) {
         L->allowhook = 0;
         luaD_poscall(L, restorestack(L, ci->old_fr));
         L->allowhook = 1;
+        ci->hook = 0xFF;
         return 1;  /* don't execute after */
     }
+    ci->hook = 0xFF;
     return 0;
   }
   if (ci->hook != 0xFF) {

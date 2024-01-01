@@ -485,6 +485,8 @@ static void unroll (lua_State *L, void *ud) {
   for (;;) {
     if (L->ci == &L->base_ci)  /* stack is empty? */
       return;  /* coroutine finished normally */
+    if (L->ci->callstatus & CIST_ERRH)  /* error handler yielded? */
+      luaD_throw(L, LUA_ERRRUN);  /* finish throwing error */
     if (!isLua(L->ci))  /* C function? */
       finishCcall(L);
     else {  /* Lua function */

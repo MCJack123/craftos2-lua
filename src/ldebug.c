@@ -600,14 +600,23 @@ static void addinfo (lua_State *L, const char *msg) {
 }
 
 
+static int errork(lua_State *L) {
+  luaD_throw(L, LUA_ERRRUN);
+}
+
+#undef NDEBUG
+#include <assert.h>
 l_noret luaG_errormsg (lua_State *L) {
+  if (L->errfunc < 0) luaD_throw(L, LUA_ERRERR);  /* manually check error in error handler; avoids stack overflow */
   if (L->errfunc != 0) {  /* is there an error handling function? */
     StkId errfunc = restorestack(L, L->errfunc);
     if (!ttisfunction(errfunc)) luaD_throw(L, LUA_ERRERR);
     setobjs2s(L, L->top, L->top - 1);  /* move argument */
     setobjs2s(L, L->top - 1, errfunc);  /* push function */
     L->top++;
-    luaD_call(L, L->top - 2, 1, 0);  /* call it */
+    L->errfunc = -1;
+    L->ci->callstatus |= CIST_ERRH;
+    luaD_call(L, L->top - 2, 1, 1);  /* call it */
   }
   luaD_throw(L, LUA_ERRRUN);
 }

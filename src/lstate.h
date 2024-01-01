@@ -110,7 +110,7 @@ typedef struct CallInfo {
 #define CIST_YPCALL	(1<<4)	/* call is a yieldable protected call */
 #define CIST_STAT	(1<<5)	/* call has an error status (pcall) */
 #define CIST_TAIL	(1<<6)	/* call was tail called */
-#define CIST_HOOKYIELD	(1<<7)	/* last hook called yielded */
+#define CIST_ERRH	(1<<7)	/* call is in error handler */
 
 
 #define isLua(ci)	((ci)->callstatus & CIST_LUA)
