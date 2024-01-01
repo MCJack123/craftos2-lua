@@ -282,7 +282,7 @@ static int gethooktable(lua_State *L) {
 }
 
 
-static int hook_continue(lua_State *L) {} // placeholder
+static int hook_continue(lua_State *L) { return 0; } // placeholder
 
 
 static void hookf (lua_State *L, lua_Debug *ar) {

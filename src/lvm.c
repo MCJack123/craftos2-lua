@@ -550,10 +550,6 @@ int luaV_finishOp (lua_State *L) {
     ci->hook = 0xFF;
     return 0;
   }
-  if (ci->hook != 0xFF) {
-    ci->hook = 0xFF;
-    return;
-  }
   base = ci->u.l.base;
   inst = *(ci->u.l.savedpc - 1);  /* interrupted instruction */
   op = GET_OPCODE(inst);
