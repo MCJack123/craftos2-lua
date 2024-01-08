@@ -599,13 +599,11 @@ LUA_API const char *lua_pushsubstring (lua_State *L, int idx, size_t start, size
     }
     if (ss != NULL) break;
     if (nextsscluster(cluster) == NULL) {  /* need new cluster? */
-      olddebt = g->GCdebt;
       next = luaM_newvector(L, SUBSTR_CLUSTER_SIZE, TString);
-      g->GCdebt = olddebt;
       memset(next, 0, SUBSTR_CLUSTER_SIZE * sizeof(TString));
       nextsscluster(cluster) = next;  /* chain next cluster in list */
       nextsscluster(next) = NULL;  /* ensure next pointer is NULL */
-      clusterid(next) = clusterid(cluster) + 1; /* set cluster number */
+      rawclusterid(next) = (clusterid(cluster) + 1) | (g->currentwhite & bitmask(WHITE0BIT) ? 0 : ~CLUSTERID_MASK); /* set cluster number */
       ((bitmap_unit*)next)[BITMAP_SKIP] = 0xFFFF;  /* always mark first entry as used by bitmap */
       nextsscluster(cluster) = next;
     }

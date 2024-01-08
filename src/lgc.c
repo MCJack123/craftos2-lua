@@ -525,26 +525,27 @@ static lu_mem traversestack (global_State *g, lua_State *th) {
 
 
 static int traverserope (global_State *g, TString *r) {
-  int size = sizeof(TString);
-  if (r->tsr.left) {
+  if (r->tsr.left)
     markobject(g, r->tsr.left);
-    //size += sizeof(TString);
-  }
-  if (r->tsr.right) {
+  if (r->tsr.right)
     markobject(g, r->tsr.right);
-    //size += sizeof(TString);
-  }
-  if (r->tsr.res) {
+  if (r->tsr.res)
     markobject(g, r->tsr.res);
-    //size += sizeof(TString);
+  if ((rawclusterid(r->tsr.cluster) & ~CLUSTERID_MASK ? 1 : 0) != (g->currentwhite & bitmask(WHITE0BIT) ? 1 : 0)) {
+    rawclusterid(r->tsr.cluster) = clusterid(r->tsr.cluster) | (g->currentwhite & bitmask(WHITE0BIT) ? ~CLUSTERID_MASK : 0);
+    return sizeof(TString);
   }
-  return size;
+  return 0;
 }
 
 
 static int traversesubstr (global_State *g, TString *ss) {
   markobject(g, ss->tss.str);
-  return sizeof(TString);
+  if ((rawclusterid(ss->tss.cluster) & ~CLUSTERID_MASK ? 1 : 0) != (g->currentwhite & bitmask(WHITE0BIT) ? 1 : 0)) {
+    rawclusterid(ss->tss.cluster) = clusterid(ss->tss.cluster) | (g->currentwhite & bitmask(WHITE0BIT) ? ~CLUSTERID_MASK : 0);
+    return sizeof(TString);
+  }
+  return 0;
 }
 
 
@@ -1089,8 +1090,12 @@ static lu_mem singlestep (lua_State *L) {
   global_State *g = G(L);
   switch (g->gcstate) {
     case GCSpause: {
+      TString* cluster;
       /* start to count memory traversed */
-      g->GCmemtrav = g->strt.size * sizeof(GCObject*);
+      g->GCmemtrav = g->strt.size * sizeof(GCObject*) +
+        g->ropestacksize * sizeof(TString*) +
+        ROPE_CLUSTER_SIZE * sizeof(TString) +
+        SUBSTR_CLUSTER_SIZE * sizeof(TString);  /* "static" blocks */
       lua_assert(!isgenerational(g));
       restartcollection(g);
       g->gcstate = GCSpropagate;

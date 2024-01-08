@@ -200,7 +200,6 @@ static void f_luaopen (lua_State *L, void *ud) {
   g->memerrmsg = luaS_newliteral(L, MEMERRMSG);
   luaS_fix(g->memerrmsg);  /* it should never be collected */
   /* allocate rope and substring clusters */
-  olddebt = g->GCdebt;  /* don't count debt of these, they are never found by GC */
   g->ropestack = luaM_newvector(L, g->ropestacksize, TString *);
   g->ropeclusters = luaM_newvector(L, ROPE_CLUSTER_SIZE, TString);
   memset(g->ropeclusters, 0, ROPE_CLUSTER_SIZE * sizeof(TString));
@@ -213,9 +212,6 @@ static void f_luaopen (lua_State *L, void *ud) {
   ((unsigned long*)g->ssclusters)[BITMAP_SKIP] = 0xFFFF;  /* always mark first entry as used by bitmap */
   g->ssfreecluster = g->ssclusters;
   memset(g->allowedcfuncs, 0, sizeof(g->allowedcfuncs));  /* set all funclists to NULL */
-  /* mark new allocations as compensated & reset debt */
-  //g->totalbytes += g->GCdebt - olddebt;
-  g->GCdebt = olddebt;
   g->gcrunning = 1;  /* allow gc */
   g->version = lua_version(NULL);
   luai_userstateopen(L);
@@ -257,19 +253,17 @@ static void close_state (lua_State *L) {
   luaM_freearray(L, G(L)->strt.hash, G(L)->strt.size);
   luaZ_freebuffer(L, &g->buff);
   freestack(L);
-  olddebt = g->GCdebt;
   luaM_freearray(L, g->ropestack, g->ropestacksize);
   while (cluster != NULL) {
     next = *(TString**)cluster;
-    luaM_free(L, cluster);
+    luaM_freemem(L, cluster, ROPE_CLUSTER_SIZE * sizeof(TString));
     cluster = next;
   }
   while (sscluster != NULL) {
     ssnext = *(TString**)sscluster;
-    luaM_free(L, sscluster);
+    luaM_freemem(L, sscluster, SUBSTR_CLUSTER_SIZE * sizeof(TString));
     sscluster = ssnext;
   }
-  g->GCdebt = olddebt;
   //lua_assert(gettotalbytes(g) == sizeof(LG));
   if (g->lockstate) lua_unlock(L);
   _lua_freelock(g->lock);

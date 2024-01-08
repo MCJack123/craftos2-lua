@@ -209,13 +209,11 @@ TString *luaS_concat (lua_State *L, TString *l, TString *r) {
     }
     if (rope != NULL) break;
     if (nextropecluster(cluster) == NULL) {  /* need new cluster? */
-      olddebt = g->GCdebt;
       next = luaM_newvector(L, ROPE_CLUSTER_SIZE, TString);
-      g->GCdebt = olddebt;
       memset(next, 0, ROPE_CLUSTER_SIZE * sizeof(TString));
       nextropecluster(cluster) = next;  /* chain next cluster in list */
       nextropecluster(next) = NULL;  /* ensure next pointer is NULL */
-      clusterid(next) = clusterid(cluster) + 1; /* set cluster number */
+      rawclusterid(next) = (clusterid(cluster) + 1) | (g->currentwhite & bitmask(WHITE0BIT) ? 0 : ~CLUSTERID_MASK); /* set cluster number */
       ((bitmap_unit*)next)[BITMAP_SKIP] = 0xFFFF;  /* always mark first entry as used by bitmap */
       nextropecluster(cluster) = next;
     }
@@ -239,20 +237,21 @@ TString *luaS_build (lua_State *L, TString *rope) {
   TString *s;
   TString **stack;
   TString *orig = rope;
-  l_mem olddebt;
+  int freemem = 0;
+  void* alloc_ud;
   if (rope->tsr.tt == LUA_TSHRSTR || rope->tsr.tt == LUA_TLNGSTR || rope->tsr.tt == LUA_TSUBSTR) return cast(TString *, rope);
   if (rope->tsr.res || rope->tsr.left == NULL || rope->tsr.right == NULL) return rope->tsr.res;
-  if (rope->tsr.len >= ROPE_ALLOC_MIN_SIZE) buffer = cur = luaM_newvector(L, rope->tsr.len, char);
-  else buffer = cur = luaZ_openspace(L, &G(L)->buff, rope->tsr.len);
+  if (rope->tsr.len >= ROPE_ALLOC_MIN_SIZE) {
+    buffer = cur = G(L)->frealloc(G(L)->ud, NULL, 0, rope->tsr.len * sizeof(char));
+    freemem = 1;
+  } else buffer = cur = luaZ_openspace(L, &G(L)->buff, rope->tsr.len);
   stack = G(L)->ropestack;
   do {
     int b = 0;
     while (rope->tsr.left->tsr.tt == LUA_TROPSTR && rope->tsr.left->tsr.res == NULL) {
       if (stack - G(L)->ropestack == G(L)->ropestacksize - 1) {
         TString **oldbase = G(L)->ropestack;
-        olddebt = G(L)->GCdebt;
         luaM_reallocvector(L, G(L)->ropestack, G(L)->ropestacksize, G(L)->ropestacksize + G(L)->ropestacksize, TString *);
-        G(L)->GCdebt = olddebt;
         stack = G(L)->ropestack + (stack - oldbase);
         G(L)->ropestacksize += G(L)->ropestacksize;
       }
@@ -287,7 +286,9 @@ TString *luaS_build (lua_State *L, TString *rope) {
     rope = rope->tsr.right;
   } while (stack >= G(L)->ropestack);
   s = luaS_newlstr(L, buffer, cur - buffer);
-  if (orig->tsr.len >= ROPE_ALLOC_MIN_SIZE) luaM_free(L, buffer);
+  if (freemem) {
+    G(L)->frealloc(G(L)->ud, buffer, orig->tsr.len * sizeof(char), 0);
+  }
   orig->tsr.res = s;
   orig->tsr.left = orig->tsr.right = NULL;  /* release left & right nodes (we don't need them anymore) */
   /* mark the string as black so it doesn't accidentally get freed */
@@ -318,7 +319,6 @@ static void freeropeclusters (lua_State *L) {
   TString *cluster, *last = NULL;
   bitmap_unit *bitmap;
   int i, empty, full, kept = 1, setfree = 0;
-  l_mem olddebt;
   for (cluster = G(L)->ropeclusters; cluster != NULL; last = cluster, cluster = nextropecluster(cluster)) {
     bitmap = (bitmap_unit*)cluster + BITMAP_SKIP;
     empty = (bitmap[0] & ~(bitmap_unit)(0xFFFF)) == 0;  /* ignore first entry use bit */
@@ -334,14 +334,14 @@ static void freeropeclusters (lua_State *L) {
     if (empty) {  /* entire cluster unused? */
       if (kept) {
         kept--;  /* leave one empty cluster allocated */
+        setfree = 1;
+        G(L)->ropefreecluster = cluster;
       } else {
         /* unlink and free cluster */
         nextropecluster(last) = nextropecluster(cluster);
         if (G(L)->ropefreecluster == cluster)
           G(L)->ropefreecluster = nextropecluster(cluster);
-        olddebt = G(L)->GCdebt;
-        luaM_free(L, cluster);
-        G(L)->GCdebt = olddebt;
+        luaM_freemem(L, cluster, ROPE_CLUSTER_SIZE * sizeof(TString));
         cluster = last;
       }
     } else if (full && !setfree) {
@@ -355,7 +355,6 @@ static void freessclusters (lua_State *L) {
   TString *cluster, *last = NULL;
   bitmap_unit *bitmap;
   int i, empty, full, kept = 1, setfree = 0;
-  l_mem olddebt;
   for (cluster = G(L)->ssclusters; cluster != NULL; last = cluster, cluster = nextsscluster(cluster)) {
     bitmap = (bitmap_unit*)cluster + BITMAP_SKIP;
     empty = (bitmap[0] & ~(bitmap_unit)(0xFFFF)) == 0;  /* ignore first entry use bit */
@@ -371,14 +370,14 @@ static void freessclusters (lua_State *L) {
     if (empty) {  /* entire cluster unused? */
       if (kept) {
         kept--;  /* leave one empty cluster allocated */
+        setfree = 1;
+        G(L)->ssfreecluster = cluster;
       } else {
         /* unlink and free cluster */
         nextsscluster(last) = nextsscluster(cluster);
         if (G(L)->ssfreecluster == cluster)
           G(L)->ssfreecluster = nextsscluster(cluster);
-        olddebt = G(L)->GCdebt;
-        luaM_free(L, cluster);
-        G(L)->GCdebt = olddebt;
+        luaM_freemem(L, cluster, SUBSTR_CLUSTER_SIZE * sizeof(TString));
         cluster = last;
       }
     } else if (full && !setfree) {

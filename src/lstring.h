@@ -16,12 +16,14 @@
 #define SUBSTR_CLUSTER_SIZE ((sizeof(TString) * 16 - sizeof(void*) * 2) * 8)
 #define BITMAP_UNIT_SIZE (sizeof(bitmap_unit) * 8)
 #define BITMAP_SKIP (sizeof(void*) / sizeof(bitmap_unit) * 2)
+#define CLUSTERID_MASK LONG_MAX
 
 #define sizestring(s)	(sizeof(union TString)+((s)->len+1)*sizeof(char))
 
 #define sizeudata(u)	(sizeof(union Udata)+(u)->len)
 
-#define clusterid(l) (*(bitmap_unit*)((void**)(l) + 1))
+#define clusterid(l) (*(bitmap_unit*)((void**)(l) + 1) & CLUSTERID_MASK)
+#define rawclusterid(l) (*(bitmap_unit*)((void**)(l) + 1))
 #define nextropecluster(l) (*(TString**)(l))
 #define nextsscluster(l) (*(TString**)(l))
 
