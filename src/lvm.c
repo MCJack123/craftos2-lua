@@ -933,65 +933,74 @@ void luaV_execute (lua_State *L) {
         setobjs2s(L, ra+1, rb);
         Protect(luaV_gettable(L, rb, RKC(i), ra));
       )
-      vmcase(OP_ADD, {
+      vmcase(OP_ADD,
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         if (ttisnumber(rb) && ttisnumber(rc)) {
           if (ttisinteger(rb) && ttisinteger(rc)) {
-            int nb = ivalue(rb), nc = ivalue(rc), nr;
+            int nb = ivalue(rb);
+            int nc = ivalue(rc);
+            int nr;
             nr = nb + nc;
             if ((nb & 0x80000000) == (nc & 0x80000000) && (nb & 0x80000000) != (nr & 0x80000000)) {
               setnvalue(ra, luai_numadd(L, (lua_Number)nb, (lua_Number)nc));
             } else setivalue(ra, nr);
           } else {
-            lua_Number nb = nvalue(rb), nc = nvalue(rc);
+            lua_Number nb = nvalue(rb);
+            lua_Number nc = nvalue(rc);
             setnvalue(ra, luai_numadd(L, nb, nc));
           }
         }
-        else { Protect(luaV_arith(L, ra, rb, rc, TM_ADD)); } }
+        else { Protect(luaV_arith(L, ra, rb, rc, TM_ADD)); }
       )
-      vmcase(OP_SUB, {
+      vmcase(OP_SUB,
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         if (ttisnumber(rb) && ttisnumber(rc)) {
           if (ttisinteger(rb) && ttisinteger(rc)) {
-            int nb = ivalue(rb), nc = ivalue(rc), nr;
+            int nb = ivalue(rb);
+            int nc = ivalue(rc);
+            int nr;
             nr = nb - nc;
             if ((nb & 0x80000000) != (nc & 0x80000000) && (nb & 0x80000000) != (nr & 0x80000000)) {
               setnvalue(ra, luai_numsub(L, (lua_Number)nb, (lua_Number)nc));
             } else setivalue(ra, nr);
           } else {
-            lua_Number nb = nvalue(rb), nc = nvalue(rc);
+            lua_Number nb = nvalue(rb);
+            lua_Number nc = nvalue(rc);
             setnvalue(ra, luai_numsub(L, nb, nc));
           }
         }
-        else { Protect(luaV_arith(L, ra, rb, rc, TM_SUB)); } }
+        else { Protect(luaV_arith(L, ra, rb, rc, TM_SUB)); }
       )
       vmcase(OP_MUL,
-        {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         if (ttisnumber(rb) && ttisnumber(rc)) {
           if (ttisinteger(rb) && ttisinteger(rc)) {
-            int nb = ivalue(rb), nc = ivalue(rc), nr;
-            if (luai_muloverflow(nb, nc)) {
+            int nb = ivalue(rb);
+            int nc = ivalue(rc);
+            int nr;
+            if (__builtin_smul_overflow(nb, nb, &nr)) {
               setnvalue(ra, luai_nummul(L, (lua_Number)nb, (lua_Number)nc));
-            } else setivalue(ra, nb * nc);
+            } else setivalue(ra, nr);
           } else {
-            lua_Number nb = nvalue(rb), nc = nvalue(rc);
+            lua_Number nb = nvalue(rb);
+            lua_Number nc = nvalue(rc);
             setnvalue(ra, luai_nummul(L, nb, nc));
           }
         }
-        else { Protect(luaV_arith(L, ra, rb, rc, TM_MUL)); } }
+        else { Protect(luaV_arith(L, ra, rb, rc, TM_MUL)); }
       )
-      vmcase(OP_DIV, {
+      vmcase(OP_DIV,
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         if (ttisnumber(rb) && ttisnumber(rc)) {
-          lua_Number nb = nvalue(rb), nc = nvalue(rc);
+          lua_Number nb = nvalue(rb);
+            lua_Number nc = nvalue(rc);
           setnvalue(ra, luai_numdiv(L, nb, nc));
         }
-        else { Protect(luaV_arith(L, ra, rb, rc, TM_DIV)); } }
+        else { Protect(luaV_arith(L, ra, rb, rc, TM_DIV)); }
       )
       vmcase(OP_MOD,
         arith_op(luai_nummod, TM_MOD);
@@ -1004,14 +1013,13 @@ void luaV_execute (lua_State *L) {
         if (ttisnumber(rb)) {
           if (ttisinteger(rb)) {
             int nb = ivalue(rb);
-            if (nb == INT_MIN) setnvalue(ra, (lua_Number)0x80000000);
-            else setivalue(ra, luai_numunm(L, nb));
+            if (nb == INT_MIN) {setnvalue(ra, (lua_Number)0x80000000);}
+            else {setivalue(ra, luai_numunm(L, nb));}
           } else {
             lua_Number nb = nvalue(rb);
             setnvalue(ra, luai_numunm(L, nb));
           }
-        }
-        else {
+        } else {
           Protect(luaV_arith(L, ra, rb, rb, TM_UNM));
         }
       )

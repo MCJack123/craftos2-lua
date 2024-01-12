@@ -61,7 +61,7 @@
 
 /* Variant tags for numbers */
 #define LUA_TDBLNUM (LUA_TNUMBER | (0 << 4))  /* double */
-#define LUA_INTNUM  (LUA_TNUMBER | (1 << 4))  /* integer (32-bit) */
+#define LUA_TINTNUM (LUA_TNUMBER | (1 << 4))  /* integer (32-bit) */
 
 
 /* Bit mark for collectable types */
@@ -137,7 +137,7 @@ typedef struct lua_TValue TValue;
 /* Macros to test type */
 #define checktag(o,t)		(rttype(o) == (t))
 #define checktype(o,t)		(ttypenv(o) == (t))
-#define ttisnumber(o)		checktag((o), LUA_TNUMBER)
+#define ttisnumber(o)		checktype((o), LUA_TNUMBER)
 #define ttisdouble(o)   checktag((o), LUA_TDBLNUM)
 #define ttisinteger(o)  checktag((o), LUA_TINTNUM)
 #define ttisnil(o)		checktag((o), LUA_TNIL)
@@ -201,7 +201,7 @@ typedef struct lua_TValue TValue;
 #define settt_(o,t)	((o)->tt_=(t))
 
 #define setnvalue(obj,x) \
-  { TValue *io=(obj); num_(io)=(x); settt_(io, LUA_TDBLNUM); }
+  { TValue *io=(obj); val_(io).n=(x); settt_(io, LUA_TDBLNUM); }
 
 #define setivalue(obj,x) \
   { TValue *io=(obj); val_(io).i=(x); settt_(io, LUA_TINTNUM); }
@@ -302,6 +302,7 @@ typedef struct lua_TValue TValue;
 ** =======================================================
 */
 #if defined(LUA_NANTRICK)
+#error NANTRICK not supported in this fork
 
 /*
 ** numbers are represented in the 'd_' field. All other values have the

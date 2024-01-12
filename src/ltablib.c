@@ -181,7 +181,7 @@ static int setn (lua_State *L) {
 
 
 static int tinsert (lua_State *L) {
-  int e;  /* first empty element */
+  int e = 0;  /* first empty element */
   int pos;  /* where to insert new element */
   int ctx = 0;
   if (lua_getctx(L, &ctx) == LUA_YIELD) {
@@ -377,7 +377,7 @@ resume:
 */
 
 
-static int sort (lua_State *L);
+int tsort (lua_State *L);
 
 
 static void set2 (lua_State *L, int i, int j) {
@@ -428,7 +428,7 @@ static int sort_comp (lua_State *L, int a, int b, struct table_sort_state * s, i
     lua_pushvalue(L, 2);
     lua_pushvalue(L, a-1);  /* -1 to compensate function */
     lua_pushvalue(L, b-2);  /* -2 to compensate function and `a' */
-    lua_callk(L, 2, 1, s->id, sort);
+    lua_callk(L, 2, 1, s->id, tsort);
 resume:
     res = lua_toboolean(L, -1);
     lua_pop(L, 1);
@@ -454,7 +454,7 @@ resume:
           lua_pop(L, 1);
           lua_pushvalue(L, a-1);  /* -1 to compensate function */
           lua_pushvalue(L, b-2);  /* -2 to compensate function and `a' */
-          lua_callk(L, 2, 1, s->id, sort);
+          lua_callk(L, 2, 1, s->id, tsort);
 resume2:
           res = lua_toboolean(L, -1);
           lua_pop(L, 1);
@@ -494,9 +494,9 @@ static void auxsort (lua_State *L, struct table_sort_state * s, struct table_sor
       case 11: goto resume11;
     }
     /* sort elements a[l], a[(l+u)/2] and a[u] */
-    luaL_igeti(L, 1, a->l, 6, sort);
+    luaL_igeti(L, 1, a->l, 6, tsort);
 resume6:
-    luaL_igeti(L, 1, a->u, 1, sort);
+    luaL_igeti(L, 1, a->u, 1, tsort);
 resume1:
     if (sort_comp(L, -1, -2, s, 1))  /* a[u] < a[l]? */
       set2(L, a->l, a->u);  /* swap a[l] - a[u] */
@@ -504,15 +504,15 @@ resume1:
       lua_pop(L, 2);
     if (a->u-a->l == 1) break;  /* only 2 elements */
     s->i = (a->l+a->u)/2;
-    luaL_igeti(L, 1, s->i, 7, sort);
+    luaL_igeti(L, 1, s->i, 7, tsort);
 resume7:
-    luaL_igeti(L, 1, a->l, 2, sort);
+    luaL_igeti(L, 1, a->l, 2, tsort);
 resume2:
     if (sort_comp(L, -2, -1, s, 2))  /* a[i]<a[l]? */
       set2(L, s->i, a->l);
     else {
       lua_pop(L, 1);  /* remove a[l] */
-      luaL_igeti(L, 1, a->u, 3, sort);
+      luaL_igeti(L, 1, a->u, 3, tsort);
 resume3:
       if (sort_comp(L, -1, -2, s, 3))  /* a[u]<a[i]? */
         set2(L, s->i, a->u);
@@ -520,30 +520,30 @@ resume3:
         lua_pop(L, 2);
     }
     if (a->u-a->l == 2) break;  /* only 3 elements */
-    luaL_igeti(L, 1, s->i, 8, sort);  /* Pivot */
+    luaL_igeti(L, 1, s->i, 8, tsort);  /* Pivot */
 resume8:
     lua_pushvalue(L, -1);
-    luaL_igeti(L, 1, a->u-1, 9, sort);
+    luaL_igeti(L, 1, a->u-1, 9, tsort);
 resume9:
     set2(L, s->i, a->u-1);
     /* a[l] <= P == a[u-1] <= a[u], only need to sort from l+1 to u-2 */
     s->i = a->l; s->j = a->u-1;
     for (;;) {  /* invariant: a[l..i] <= P <= a[j..u] */
       /* repeat ++i until a[i] >= P */
-      if (!s->s) luaL_igeti(L, 1, ++s->i, 4, sort);
+      if (!s->s) luaL_igeti(L, 1, ++s->i, 4, tsort);
 resume4:
       while (sort_comp(L, -1, -2, s, 4)) {
         if (s->i>a->u) luaL_error(L, "invalid order function for sorting");
         lua_pop(L, 1);  /* remove a[i] */
-        if (!s->s) luaL_igeti(L, 1, ++s->i, 4, sort);
+        if (!s->s) luaL_igeti(L, 1, ++s->i, 4, tsort);
       }
       /* repeat --j until a[j] <= P */
-      if (!s->s) luaL_igeti(L, 1, --s->j, 5, sort);
+      if (!s->s) luaL_igeti(L, 1, --s->j, 5, tsort);
 resume5:
       while (sort_comp(L, -3, -1, s, 5)) {
         if (s->j<a->l) luaL_error(L, "invalid order function for sorting");
         lua_pop(L, 1);  /* remove a[j] */
-        if (!s->s) luaL_igeti(L, 1, --s->j, 5, sort);
+        if (!s->s) luaL_igeti(L, 1, --s->j, 5, tsort);
       }
       if (s->j<s->i) {
         lua_pop(L, 3);  /* pop pivot, a[i], a[j] */
@@ -551,9 +551,9 @@ resume5:
       }
       set2(L, s->i, s->j);
     }
-    luaL_igeti(L, 1, a->u-1, 10, sort);
+    luaL_igeti(L, 1, a->u-1, 10, tsort);
 resume10:
-    luaL_igeti(L, 1, s->i, 11, sort);
+    luaL_igeti(L, 1, s->i, 11, tsort);
 resume11:
     set2(L, a->u-1, s->i);  /* swap pivot (a[u-1]) with a[i] */
     /* a[l..i-1] <= a[i] == P <= a[i+1..u] */
@@ -574,7 +574,7 @@ resume11:
   s->d--;
 }
 
-int sort (lua_State *L) {
+int tsort (lua_State *L) {
   struct table_sort_state * s;
   struct table_sort_args *a, *aa;
   int n;
@@ -585,7 +585,7 @@ int sort (lua_State *L) {
     goto resume;
   }
   tablelike(L, 1, TAB_R | TAB_W | TAB_L);
-  n = aux_igetn(L, 1, -1, sort);
+  n = aux_igetn(L, 1, -1, tsort);
   luaL_checkstack(L, 40, "");  /* assume array is smaller than 2^40 */
   if (!lua_isnoneornil(L, 2))  /* is there a 2nd argument? */
     luaL_checktype(L, 2, LUA_TFUNCTION);
@@ -622,7 +622,7 @@ static int tpack (lua_State *L) {
 }
 
 int tunpack (lua_State *L) {
-  int i, e, n, ctx = 0;
+  int i, e = 0, n = 0, ctx = 0;
   luaL_checktype(L, 1, LUA_TTABLE);
   i = luaL_optint(L, 2, 1);
   lua_getctx(L, &ctx);
@@ -676,7 +676,7 @@ static const luaL_Reg tab_funcs[] = {
   {"insert", tinsert},
   {"remove", tremove},
   {"setn", setn},
-  {"sort", sort},
+  {"sort", tsort},
   {"pack", tpack},
   {"unpack", tunpack},
   {NULL, NULL}
