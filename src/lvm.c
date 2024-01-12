@@ -326,7 +326,7 @@ int luaV_equalobj_ (lua_State *L, const TValue *t1, const TValue *t2) {
   lua_assert(ttype(t1) == ttype(t2));
   switch (ttype(t1)) {
     case LUA_TNIL: return 1;
-    case LUA_TNUMBER: return luai_numeq(nvalue(t1), nvalue(t2));
+    case LUA_TNUMBER: case LUA_TINTNUM: return luai_numeq(nvalue(t1), nvalue(t2));
     case LUA_TBOOLEAN: return bvalue(t1) == bvalue(t2);  /* true must be 1 !! */
     case LUA_TLIGHTUSERDATA: return pvalue(t1) == pvalue(t2);
     case LUA_TLCF: return fvalue(t1) == fvalue(t2);
@@ -401,19 +401,19 @@ void luaV_objlen (lua_State *L, StkId ra, const TValue *rb) {
       Table *h = hvalue(rb);
       tm = fasttm(L, h->metatable, TM_LEN);
       if (tm) break;  /* metamethod? break switch to call it */
-      setnvalue(ra, cast_num(luaH_getn(h)));  /* else primitive len */
+      setivalue(ra, luaH_getn(h));  /* else primitive len */
       return;
     }
     case LUA_TLNGSTR: case LUA_TSHRSTR: {
-      setnvalue(ra, cast_num(tsvalue(rb)->len));
+      setivalue(ra, tsvalue(rb)->len);
       return;
     }
     case LUA_TROPSTR: {
-      setnvalue(ra, cast_num(trvalue(rb)->len));
+      setivalue(ra, trvalue(rb)->len);
       return;
     }
     case LUA_TSUBSTR: {
-      setnvalue(ra, cast_num(ssvalue(rb)->len));
+      setivalue(ra, ssvalue(rb)->len);
       return;
     }
     default: {  /* try metamethod */
@@ -708,8 +708,13 @@ static void PrintConstant(const Proto* f, int i)
         TValue *rb = RKB(i); \
         TValue *rc = RKC(i); \
         if (ttisnumber(rb) && ttisnumber(rc)) { \
-          lua_Number nb = nvalue(rb), nc = nvalue(rc); \
-          setnvalue(ra, op(L, nb, nc)); \
+          if (ttisinteger(rb) && ttisinteger(rc)) { \
+            int nb = ivalue(rb), nc = ivalue(rc); \
+            setivalue(ra, op(L, nb, nc)); \
+          } else { \
+            lua_Number nb = nvalue(rb), nc = nvalue(rc); \
+            setnvalue(ra, op(L, nb, nc)); \
+          } \
         } \
         else { Protect(luaV_arith(L, ra, rb, rc, tm)); } }
 
@@ -928,17 +933,65 @@ void luaV_execute (lua_State *L) {
         setobjs2s(L, ra+1, rb);
         Protect(luaV_gettable(L, rb, RKC(i), ra));
       )
-      vmcase(OP_ADD,
-        arith_op(luai_numadd, TM_ADD);
+      vmcase(OP_ADD, {
+        TValue *rb = RKB(i);
+        TValue *rc = RKC(i);
+        if (ttisnumber(rb) && ttisnumber(rc)) {
+          if (ttisinteger(rb) && ttisinteger(rc)) {
+            int nb = ivalue(rb), nc = ivalue(rc), nr;
+            nr = nb + nc;
+            if ((nb & 0x80000000) == (nc & 0x80000000) && (nb & 0x80000000) != (nr & 0x80000000)) {
+              setnvalue(ra, luai_numadd(L, (lua_Number)nb, (lua_Number)nc));
+            } else setivalue(ra, nr);
+          } else {
+            lua_Number nb = nvalue(rb), nc = nvalue(rc);
+            setnvalue(ra, luai_numadd(L, nb, nc));
+          }
+        }
+        else { Protect(luaV_arith(L, ra, rb, rc, TM_ADD)); } }
       )
-      vmcase(OP_SUB,
-        arith_op(luai_numsub, TM_SUB);
+      vmcase(OP_SUB, {
+        TValue *rb = RKB(i);
+        TValue *rc = RKC(i);
+        if (ttisnumber(rb) && ttisnumber(rc)) {
+          if (ttisinteger(rb) && ttisinteger(rc)) {
+            int nb = ivalue(rb), nc = ivalue(rc), nr;
+            nr = nb - nc;
+            if ((nb & 0x80000000) != (nc & 0x80000000) && (nb & 0x80000000) != (nr & 0x80000000)) {
+              setnvalue(ra, luai_numsub(L, (lua_Number)nb, (lua_Number)nc));
+            } else setivalue(ra, nr);
+          } else {
+            lua_Number nb = nvalue(rb), nc = nvalue(rc);
+            setnvalue(ra, luai_numsub(L, nb, nc));
+          }
+        }
+        else { Protect(luaV_arith(L, ra, rb, rc, TM_SUB)); } }
       )
       vmcase(OP_MUL,
-        arith_op(luai_nummul, TM_MUL);
+        {
+        TValue *rb = RKB(i);
+        TValue *rc = RKC(i);
+        if (ttisnumber(rb) && ttisnumber(rc)) {
+          if (ttisinteger(rb) && ttisinteger(rc)) {
+            int nb = ivalue(rb), nc = ivalue(rc), nr;
+            if (luai_muloverflow(nb, nc)) {
+              setnvalue(ra, luai_nummul(L, (lua_Number)nb, (lua_Number)nc));
+            } else setivalue(ra, nb * nc);
+          } else {
+            lua_Number nb = nvalue(rb), nc = nvalue(rc);
+            setnvalue(ra, luai_nummul(L, nb, nc));
+          }
+        }
+        else { Protect(luaV_arith(L, ra, rb, rc, TM_MUL)); } }
       )
-      vmcase(OP_DIV,
-        arith_op(luai_numdiv, TM_DIV);
+      vmcase(OP_DIV, {
+        TValue *rb = RKB(i);
+        TValue *rc = RKC(i);
+        if (ttisnumber(rb) && ttisnumber(rc)) {
+          lua_Number nb = nvalue(rb), nc = nvalue(rc);
+          setnvalue(ra, luai_numdiv(L, nb, nc));
+        }
+        else { Protect(luaV_arith(L, ra, rb, rc, TM_DIV)); } }
       )
       vmcase(OP_MOD,
         arith_op(luai_nummod, TM_MOD);
@@ -949,8 +1002,14 @@ void luaV_execute (lua_State *L) {
       vmcase(OP_UNM,
         TValue *rb = RB(i);
         if (ttisnumber(rb)) {
-          lua_Number nb = nvalue(rb);
-          setnvalue(ra, luai_numunm(L, nb));
+          if (ttisinteger(rb)) {
+            int nb = ivalue(rb);
+            if (nb == INT_MIN) setnvalue(ra, (lua_Number)0x80000000);
+            else setivalue(ra, luai_numunm(L, nb));
+          } else {
+            lua_Number nb = nvalue(rb);
+            setnvalue(ra, luai_numunm(L, nb));
+          }
         }
         else {
           Protect(luaV_arith(L, ra, rb, rb, TM_UNM));

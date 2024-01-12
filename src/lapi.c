@@ -352,8 +352,11 @@ LUA_API lua_Integer lua_tointegerx (lua_State *L, int idx, int *isnum) {
   const TValue *o = index2addr(L, idx);
   if (tonumber(L, o, &n)) {
     lua_Integer res;
-    lua_Number num = nvalue(o);
-    lua_number2integer(res, num);
+    if (ttisinteger(o)) res = ivalue(o);
+    else {
+      lua_Number num = nvalue(o);
+      lua_number2integer(res, num);
+    }
     if (isnum) *isnum = 1;
     return res;
   }
@@ -486,7 +489,7 @@ LUA_API void lua_pushnumber (lua_State *L, lua_Number n) {
 
 LUA_API void lua_pushinteger (lua_State *L, lua_Integer n) {
   lua_lock(L);
-  setnvalue(L->top, cast_num(n));
+  setivalue(L->top, n);
   api_incr_top(L);
   lua_unlock(L);
 }

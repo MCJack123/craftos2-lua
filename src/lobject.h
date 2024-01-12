@@ -59,6 +59,11 @@
 #define LUA_TSUBSTR	(LUA_TSTRING | (3 << 4))  /* substrings */
 
 
+/* Variant tags for numbers */
+#define LUA_TDBLNUM (LUA_TNUMBER | (0 << 4))  /* double */
+#define LUA_INTNUM  (LUA_TNUMBER | (1 << 4))  /* integer (32-bit) */
+
+
 /* Bit mark for collectable types */
 #define BIT_ISCOLLECTABLE	(1 << 6)
 
@@ -94,7 +99,7 @@ typedef struct GCheader {
 typedef union Value Value;
 
 
-#define numfield	lua_Number n;    /* numbers */
+#define numfield	lua_Number n; int i;    /* numbers */
 
 
 
@@ -113,7 +118,7 @@ typedef struct lua_TValue TValue;
 
 
 #define val_(o)		((o)->value_)
-#define num_(o)		(val_(o).n)
+#define num_(o)		(ttisdouble(o) ? val_(o).n : (double)val_(o).i)
 
 
 /* raw type tag of a TValue */
@@ -133,6 +138,8 @@ typedef struct lua_TValue TValue;
 #define checktag(o,t)		(rttype(o) == (t))
 #define checktype(o,t)		(ttypenv(o) == (t))
 #define ttisnumber(o)		checktag((o), LUA_TNUMBER)
+#define ttisdouble(o)   checktag((o), LUA_TDBLNUM)
+#define ttisinteger(o)  checktag((o), LUA_TINTNUM)
 #define ttisnil(o)		checktag((o), LUA_TNIL)
 #define ttisboolean(o)		checktag((o), LUA_TBOOLEAN)
 #define ttislightuserdata(o)	checktag((o), LUA_TLIGHTUSERDATA)
@@ -155,6 +162,7 @@ typedef struct lua_TValue TValue;
 
 /* Macros to access values */
 #define nvalue(o)	check_exp(ttisnumber(o), num_(o))
+#define ivalue(o) check_exp(ttisinteger(o), val_(o).i)
 #define gcvalue(o)	check_exp(iscollectable(o), val_(o).gc)
 #define pvalue(o)	check_exp(ttislightuserdata(o), val_(o).p)
 #define rawtsvalue(o)	check_exp(ttisstring(o), &val_(o).gc->ts)
@@ -193,7 +201,10 @@ typedef struct lua_TValue TValue;
 #define settt_(o,t)	((o)->tt_=(t))
 
 #define setnvalue(obj,x) \
-  { TValue *io=(obj); num_(io)=(x); settt_(io, LUA_TNUMBER); }
+  { TValue *io=(obj); num_(io)=(x); settt_(io, LUA_TDBLNUM); }
+
+#define setivalue(obj,x) \
+  { TValue *io=(obj); val_(io).i=(x); settt_(io, LUA_TINTNUM); }
 
 #define setnilvalue(obj) settt_(obj, LUA_TNIL)
 

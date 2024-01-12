@@ -327,7 +327,10 @@ int luaK_numberK (FuncState *fs, lua_Number r) {
   int n;
   lua_State *L = fs->ls->L;
   TValue o;
-  setnvalue(&o, r);
+  if (modf(r, &n) == 0 && r >= (lua_Number)INT_MIN && r < (lua_Number)INT_MAX) {
+    lua_number2int(n, r);
+    setivalue(&o, n);
+  } else setnvalue(&o, r);
   if (r == 0 || luai_numisnan(NULL, r)) {  /* handle -0 and NaN */
     /* use raw representation as key to avoid numeric problems */
     setsvalue(L, L->top++, luaS_newlstr(L, (char *)&r, sizeof(r)));

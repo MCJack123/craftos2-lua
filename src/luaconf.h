@@ -447,6 +447,7 @@
 #define luai_numlt(L,a,b)	((a)<(b))
 #define luai_numle(L,a,b)	((a)<=(b))
 #define luai_numisnan(L,a)	(!luai_numeq((a), (a)))
+#define luai_muloverflow(a,b) (1)  /* TODO: accurate check */
 #endif
 
 
