@@ -276,10 +276,10 @@ int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
     resolvesubstr(L, l);
     resolvesubstr(L, r);
   }
-  if (ttype(l) != ttype(r))
-    luaG_ordererror(L, l, r);
-  else if (ttisnumber(l))
+  if (ttisnumber(l) && ttisnumber(r))
     return luai_numlt(L, nvalue(l), nvalue(r));
+  else if (ttype(l) != ttype(r))
+    luaG_ordererror(L, l, r);
   else if (ttisstring(l))
     return l_strcmp(rawtsvalue(l), rawtsvalue(r)) < 0;
   else if (ttissubstr(l))
@@ -298,10 +298,10 @@ int luaV_lessequal (lua_State *L, const TValue *l, const TValue *r) {
     resolvesubstr(L, l);
     resolvesubstr(L, r);
   }
-  if (ttype(l) != ttype(r))
-    luaG_ordererror(L, l, r);
-  else if (ttisnumber(l))
+  if (ttisnumber(l) && ttisnumber(r))
     return luai_numle(L, nvalue(l), nvalue(r));
+  else if (ttype(l) != ttype(r))
+    luaG_ordererror(L, l, r);
   else if (ttisstring(l))
     return l_strcmp(rawtsvalue(l), rawtsvalue(r)) <= 0;
   else if (ttissubstr(l))

@@ -158,7 +158,7 @@ typedef struct lua_TValue TValue;
 #define ttisthread(o)		checktag((o), ctb(LUA_TTHREAD))
 #define ttisdeadkey(o)		checktag((o), LUA_TDEADKEY)
 
-#define ttisequal(o1,o2)	(rttype(o1) == rttype(o2))
+#define ttisequal(o1,o2)	(ttypenv(o1) == ttypenv(o2))
 
 /* Macros to access values */
 #define nvalue(o)	check_exp(ttisnumber(o), num_(o))
