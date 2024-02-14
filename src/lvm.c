@@ -276,7 +276,7 @@ int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
     resolvesubstr(L, l);
     resolvesubstr(L, r);
   }
-  if (ttype(l) != ttype(r))
+  if (ttypenv(l) != ttypenv(r))
     luaG_ordererror(L, l, r);
   else if (ttisnumber(l))
     return luai_numlt(L, nvalue(l), nvalue(r));
@@ -298,7 +298,7 @@ int luaV_lessequal (lua_State *L, const TValue *l, const TValue *r) {
     resolvesubstr(L, l);
     resolvesubstr(L, r);
   }
-  if (ttype(l) != ttype(r))
+  if (ttypenv(l) != ttypenv(r))
     luaG_ordererror(L, l, r);
   else if (ttisnumber(l))
     return luai_numle(L, nvalue(l), nvalue(r));
