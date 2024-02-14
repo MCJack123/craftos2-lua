@@ -222,68 +222,42 @@ static int call_orderTM (lua_State *L, const TValue *p1, const TValue *p2,
 }
 
 
-static int l_strcmp (const TString *ls, const TString *rs) {
-  const char *l = getstr(ls);
-  size_t ll = ls->tsv.len;
-  const char *r = getstr(rs);
-  size_t lr = rs->tsv.len;
-  for (;;) {
-    int temp = strcmp(l, r);
-    if (temp != 0) return temp;
-    else {  /* strings are equal up to a `\0' */
-      size_t len = strlen(l);  /* index of first `\0' in both strings */
-      if (len == lr)  /* r is finished? */
-        return (len == ll) ? 0 : 1;
-      else if (len == ll)  /* l is finished? */
-        return -1;  /* l is smaller than r (because r is not finished) */
-      /* both strings longer than `len'; go on comparing (after the `\0') */
-      len++;
-      l += len; ll -= len; r += len; lr -= len;
-    }
+static int l_strcmp (lua_State *L, const TValue *l, const TValue* r) {
+  resolverope(L, l);
+  resolverope(L, r);
+  const char *lp, *rp;
+  size_t ll, lr;
+  if (ttissubstr(l)) {
+    const TString *ls = rawssvalue(l);
+    lp = getstr(ls->tss.str) + ls->tss.offset;
+    ll = ls->tss.len;
+  } else {
+    const TString *ls = rawtsvalue(l);
+    lp = getstr(ls);
+    ll = ls->tsv.len;
   }
-}
-
-
-static int l_substrcmp (const TString *ls, const TString *rs) {
-  const char *l = getstr(ls->tss.str) + ls->tss.offset;
-  size_t ll = ls->tss.len;
-  const char *r = getstr(rs->tss.str) + rs->tss.offset;
-  size_t lr = rs->tss.len;
-  for (;;) {
-    int temp = strncmp(l, r, lr > ll ? ll : lr);
-    if (temp != 0) return temp;
-    else {  /* strings are equal up to a `\0' */
-      size_t len = strlen(l);  /* index of first `\0' in both strings */
-      if (len == lr)  /* r is finished? */
-        return (len == ll) ? 0 : 1;
-      else if (len == ll)  /* l is finished? */
-        return -1;  /* l is smaller than r (because r is not finished) */
-      else if (len > ll && l > lr)  /* the next `\0' is beyond the end of the substring */
-        return 0;  /* l or r is finished */
-      /* both strings longer than `len'; go on comparing (after the `\0') */
-      len++;
-      l += len; ll -= len; r += len; lr -= len;
-    }
+  if (ttissubstr(r)) {
+    const TString *rs = rawssvalue(r);
+    rp = getstr(rs->tss.str) + rs->tss.offset;
+    lr = rs->tss.len;
+  } else {
+    const TString *rs = rawtsvalue(r);
+    rp = getstr(rs);
+    lr = rs->tsv.len;
   }
+  int cmp = memcmp(lp, rp, lr > ll ? ll : lr);
+  return cmp ? cmp : ll - lr;
 }
 
 
 int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
   int res;
-  resolverope(L, l);
-  resolverope(L, r);
-  if (ttissubstr(l) != ttissubstr(r)) {
-    resolvesubstr(L, l);
-    resolvesubstr(L, r);
-  }
   if (ttypenv(l) != ttypenv(r))
     luaG_ordererror(L, l, r);
   else if (ttisnumber(l))
     return luai_numlt(L, nvalue(l), nvalue(r));
   else if (ttisstring(l))
-    return l_strcmp(rawtsvalue(l), rawtsvalue(r)) < 0;
-  else if (ttissubstr(l))
-    return l_substrcmp(rawssvalue(l), rawssvalue(r)) < 0;
+    return l_strcmp(L, l, r) < 0;
   else if ((res = call_orderTM(L, l, r, TM_LT)) != -1)
     return res;
   luaG_ordererror(L, l, r);
@@ -292,20 +266,12 @@ int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
 
 int luaV_lessequal (lua_State *L, const TValue *l, const TValue *r) {
   int res;
-  resolverope(L, l);
-  resolverope(L, r);
-  if (ttissubstr(l) != ttissubstr(r)) {
-    resolvesubstr(L, l);
-    resolvesubstr(L, r);
-  }
   if (ttypenv(l) != ttypenv(r))
     luaG_ordererror(L, l, r);
   else if (ttisnumber(l))
     return luai_numle(L, nvalue(l), nvalue(r));
   else if (ttisstring(l))
-    return l_strcmp(rawtsvalue(l), rawtsvalue(r)) <= 0;
-  else if (ttissubstr(l))
-    return l_substrcmp(rawssvalue(l), rawssvalue(r)) <= 0;
+    return l_strcmp(L, l, r) <= 0;
   else if ((res = call_orderTM(L, l, r, TM_LE)) != -1)  /* first try `le' */
     return res;
   else if ((res = call_orderTM(L, r, l, TM_LT)) < 0)  /* else try `lt' */
