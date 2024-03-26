@@ -468,6 +468,7 @@ int luaV_finishOp (lua_State *L) {
   StkId base;
   Instruction inst;  /* interrupted instruction */
   OpCode op;
+  if (G(L)->haltstate) return 0;
   if (ci->callstatus & CIST_HOOKED) {  /* hook yield w/continuation? */
     /* finish hook */
     L->allowhook = 1;
@@ -830,7 +831,7 @@ void luaV_execute (lua_State *L) {
         break;
       }
       printf("\n");
-      debugend:
+      debugend:;
     }
 #endif
     vmdispatch (GET_OPCODE(i)) {

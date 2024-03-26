@@ -486,7 +486,7 @@ static void unroll (lua_State *L, void *ud) {
   for (;;) {
     if (L->ci == &L->base_ci)  /* stack is empty? */
       return;  /* coroutine finished normally */
-    if (L->ci->callstatus & CIST_ERRH)  /* error handler yielded? */
+    if ((L->ci->callstatus & CIST_ERRH) || G(L)->haltstate)  /* error handler yielded? */
       luaD_throw(L, LUA_ERRRUN);  /* finish throwing error */
     if (!isLua(L->ci))  /* C function? */
       finishCcall(L);
@@ -603,7 +603,7 @@ LUA_API int lua_resume (lua_State *L, lua_State *from, int nargs) {
   if (status == -1)  /* error calling 'lua_resume'? */
     status = LUA_ERRRUN;
   else {  /* yield or regular error */
-    while (status != LUA_OK && status != LUA_YIELD) {  /* error? */
+    while (status != LUA_OK && status != LUA_YIELD && !G(L)->haltstate) {  /* error? */
       if (recover(L, status))  /* recover point? */
         status = luaD_rawrunprotected(L, unroll, NULL);  /* run continuation */
       else {  /* unrecoverable error */
