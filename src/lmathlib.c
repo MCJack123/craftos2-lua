@@ -110,10 +110,11 @@ static int math_sqrt (lua_State *L) {
   return 1;
 }
 
+double luai_numpow(lua_State *L, double a, double b);
 static int math_pow (lua_State *L) {
   lua_Number x = luaL_checknumber(L, 1);
   lua_Number y = luaL_checknumber(L, 2);
-  lua_pushnumber(L, l_mathop(pow)(x, y));
+  lua_pushnumber(L, luai_numpow(L, x, y));
   return 1;
 }
 

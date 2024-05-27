@@ -25,7 +25,7 @@
 ** non-ansi feature or library.
 */
 #if !defined(LUA_ANSI) && defined(__STRICT_ANSI__)
-#define LUA_ANSI
+//#define LUA_ANSI
 #endif
 
 
@@ -433,7 +433,30 @@
 /* the following operations need the math library */
 #if defined(lobject_c) || defined(lvm_c)
 #include <math.h>
-#define luai_numpow(L,a,b)	(l_mathop(pow)(a,b))
+typedef struct lua_State lua_State;
+double luai_numpow(lua_State *L, double a, double b);
+#if defined(lvm_c)
+double luai_numpow(lua_State *L, double a, double b) {
+	double ai, bi;
+	if (modf(a, &ai) == 0.0 && modf(b, &bi) == 0.0) {
+		long al = ai, bl = bi;
+		long result = 1;
+		for (;;)
+		{
+			if (bl & 1)
+				result *= al;
+			bl >>= 1;
+			if (!bl)
+				break;
+			al *= al;
+		}
+
+		return (double)result;
+	} else {
+		return pow(a, b);
+	}
+}
+#endif
 #endif
 
 /* these are quite standard operations */
@@ -527,7 +550,7 @@
 #else								/* }{ */
 
 /* assume IEEE754 and a 32-bit integer type */
-//#define LUA_IEEE754TRICK
+#define LUA_IEEE754TRICK
 
 #endif								/* } */
 
