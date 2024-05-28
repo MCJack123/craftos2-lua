@@ -288,6 +288,13 @@ static void read_long_string (LexState *ls, SemInfo *seminfo, int sep) {
         }
         break;
       }
+      case '[': {
+        if (skip_sep(ls) == sep) {
+					save_and_next(ls);  /* skip 2nd `[' */
+					if (sep == 0) lexerror(ls, "nesting of [[...]] is deprecated", '[');
+				}
+        break;
+      }
       case '\n': case '\r': {
         save(ls, '\n');
         inclinenumber(ls);

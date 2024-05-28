@@ -248,7 +248,7 @@ static int tremove (lua_State *L) {
   pos = luaL_optint(L, 2, e);
   lua_settop(L, 2);
   lua_pushinteger(L, e);
-  if (!(1 <= pos && pos <= e))  /* position is outside bounds? */
+  if (!(pos <= e))  /* position is outside bounds? */
    return 0;  /* nothing to remove */
   //luaL_setn(L, 1, e - 1);  /* t.n = n-1 */
   luaL_igeti(L, 1, pos, -3, tremove);  /* result = t[pos] */

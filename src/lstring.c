@@ -192,7 +192,6 @@ TString *luaS_concat (lua_State *L, TString *l, TString *r) {
   bitmap_unit *bitmap;
   int i, j;
   global_State *g;
-  l_mem olddebt;
   g = G(L);
   for (cluster = g->ropefreecluster; rope == NULL; cluster = nextropecluster(cluster)) {
     bitmap = (bitmap_unit*)cluster + BITMAP_SKIP;
@@ -222,7 +221,7 @@ TString *luaS_concat (lua_State *L, TString *l, TString *r) {
   rope->tsr.marked = luaC_white(g);
   rope->tsr.tt = LUA_TROPSTR;
   rope->tsr.next = g->allgc;
-  g->allgc = rope;
+  g->allgc = cast(GCObject *, rope);
   rope->tsr.cluster = cluster;
   rope->tsr.left = l;
   rope->tsr.right = r;
@@ -238,7 +237,6 @@ TString *luaS_build (lua_State *L, TString *rope) {
   TString **stack;
   TString *orig = rope;
   int freemem = 0;
-  void* alloc_ud;
   if (rope->tsr.tt == LUA_TSHRSTR || rope->tsr.tt == LUA_TLNGSTR || rope->tsr.tt == LUA_TSUBSTR) return cast(TString *, rope);
   if (rope->tsr.res || rope->tsr.left == NULL || rope->tsr.right == NULL) return rope->tsr.res;
   if (rope->tsr.len >= ROPE_ALLOC_MIN_SIZE) {

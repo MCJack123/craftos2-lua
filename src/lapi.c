@@ -567,7 +567,6 @@ LUA_API const char *lua_pushsubstring (lua_State *L, int idx, size_t start, size
   bitmap_unit *bitmap;
   int i, j;
   global_State *g;
-  l_mem olddebt;
   lua_lock(L);
   luaC_checkGC(L);
   g = G(L);
@@ -615,7 +614,7 @@ LUA_API const char *lua_pushsubstring (lua_State *L, int idx, size_t start, size
   ss->tsr.marked = luaC_white(g);
   ss->tsr.tt = LUA_TSUBSTR;
   ss->tsr.next = g->allgc;
-  g->allgc = ss;
+  g->allgc = cast(GCObject *, ss);
   ss->tss.cluster = cluster;
   ss->tss.str = str;
   ss->tss.offset = start - 1;

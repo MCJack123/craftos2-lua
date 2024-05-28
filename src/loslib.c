@@ -25,7 +25,7 @@
 */
 #if !defined(LUA_STRFTIMEOPTIONS)
 
-#if !defined(LUA_USE_POSIX)
+#if !defined(LUA_USE_POSIX) && !(defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199900) && !(defined(__cplusplus) && __cplusplus >= 201100)
 #define LUA_STRFTIMEOPTIONS	{ "aAbBcdHIjmMpSUwWxXyYz%", "" }
 #else
 #define LUA_STRFTIMEOPTIONS \

@@ -10,6 +10,7 @@
 
 #include <limits.h>
 #include <stddef.h>
+#include <stdint.h>
 
 
 /*
@@ -439,7 +440,7 @@ double luai_numpow(lua_State *L, double a, double b);
 double luai_numpow(lua_State *L, double a, double b) {
 	double ai, bi;
 	if (modf(a, &ai) == 0.0 && modf(b, &bi) == 0.0) {
-		long al = ai, bl = bi;
+		long al = abs(ai), bl = abs(bi);
 		long result = 1;
 		for (;;)
 		{
@@ -451,6 +452,8 @@ double luai_numpow(lua_State *L, double a, double b) {
 			al *= al;
 		}
 
+		if (ai < 0 && (bl & 1)) result = -result;
+		if (bi < 0) return 1.0/(double)result;
 		return (double)result;
 	} else {
 		return pow(a, b);
@@ -486,7 +489,7 @@ double luai_numpow(lua_State *L, double a, double b) {
 @@ LUA_UNSIGNED is the integral type used by lua_pushunsigned/lua_tounsigned.
 ** It must have at least 32 bits.
 */
-#define LUA_UNSIGNED	unsigned LUA_INT32
+#define LUA_UNSIGNED	uintptr_t
 
 
 

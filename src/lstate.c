@@ -189,7 +189,6 @@ static void init_registry (lua_State *L, global_State *g) {
 */
 static void f_luaopen (lua_State *L, void *ud) {
   global_State *g = G(L);
-  l_mem olddebt;
   UNUSED(ud);
   stack_init(L, L);  /* init stack */
   init_registry(L, g);
@@ -245,7 +244,6 @@ static void close_state (lua_State *L) {
   global_State *g = G(L);
   TString *cluster = g->ropeclusters, *next;
   TString *sscluster = g->ssclusters, *ssnext;
-  l_mem olddebt;
   luaF_close(L, L->stack);  /* close all upvalues for this thread */
   luaC_freeallobjects(L);  /* collect all objects */
   if (g->version)  /* closing a fully built state? */

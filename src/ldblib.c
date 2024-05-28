@@ -18,7 +18,8 @@
 #include "lualib.h"
 
 
-LUALIB_API const char KEY_HOOK = 'h';
+LUALIB_API const char KEY_HOOK;
+const char KEY_HOOK = 'h';
 
 
 static void checkstack (lua_State *L, lua_State *L1, int n) {

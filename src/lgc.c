@@ -578,13 +578,13 @@ static void propagatemark (global_State *g) {
       break;
     }
     case LUA_TROPSTR: {
-      TString *tr = gco2tr(o);
+      TString *tr = rawgco2tr(o);
       g->gray = tr->tsr.gclist;  /* remove from 'gray' list */
       size = traverserope(g, tr);
       break;
     }
     case LUA_TSUBSTR: {
-      TString *ss = gco2ss(o);
+      TString *ss = rawgco2ss(o);
       g->gray = ss->tss.gclist;  /* remove from 'gray' list */
       size = traversesubstr(g, ss);
       break;
@@ -729,8 +729,8 @@ static void freeobj (lua_State *L, GCObject *o) {
       luaM_freemem(L, o, sizestring(gco2ts(o)));
       break;
     }
-    case LUA_TROPSTR: luaS_freerope(L, gco2tr(o)); break;
-    case LUA_TSUBSTR: luaS_freesubstr(L, gco2ss(o)); break;
+    case LUA_TROPSTR: luaS_freerope(L, rawgco2tr(o)); break;
+    case LUA_TSUBSTR: luaS_freesubstr(L, rawgco2ss(o)); break;
     default: lua_assert(0);
   }
 }
@@ -1090,7 +1090,6 @@ static lu_mem singlestep (lua_State *L) {
   global_State *g = G(L);
   switch (g->gcstate) {
     case GCSpause: {
-      TString* cluster;
       /* start to count memory traversed */
       g->GCmemtrav = g->strt.size * sizeof(GCObject*) +
         g->ropestacksize * sizeof(TString*) +

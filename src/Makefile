@@ -8,7 +8,7 @@ PLAT= none
 
 CC?= gcc
 CXX?= g++
-CFLAGS= -g -Wall -O2 -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCFLAGS)
+CFLAGS= -g -Wall -Wno-discarded-qualifiers -O2 -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCFLAGS)
 CXXFLAGS= $(CFLAGS) 
 DYLD?= $(CXX) -shared -fPIC
 LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)

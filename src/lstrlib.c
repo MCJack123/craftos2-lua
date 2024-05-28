@@ -54,7 +54,7 @@ static size_t posrelat (ptrdiff_t pos, size_t len) {
 
 static int str_sub (lua_State *L) {
   size_t l;
-  const char *s = luaL_checklstring(L, 1, &l);
+  luaL_checklstring(L, 1, &l);
   size_t start = posrelat(luaL_checkinteger(L, 2), l);
   size_t end = posrelat(luaL_optinteger(L, 3, -1), l);
   if (start < 1) start = 1;

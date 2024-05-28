@@ -600,10 +600,6 @@ static void addinfo (lua_State *L, const char *msg) {
 }
 
 
-static int errork(lua_State *L) {
-  luaD_throw(L, LUA_ERRRUN);
-}
-
 #undef NDEBUG
 #include <assert.h>
 l_noret luaG_errormsg (lua_State *L) {
