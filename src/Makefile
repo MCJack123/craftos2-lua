@@ -48,13 +48,16 @@ LUAC_T=	luac
 LUAC_O=	luac.o
 
 ALL_O= $(BASE_O) $(LUA_O) $(LUAC_O)
-ALL_T= $(LUA_D)
+ALL_T= $(ALL_O) $(LUA_A) $(LUA_D) $(LUA_T)
+ALL_D= $(LUA_D)
 ALL_A= $(LUA_A)
 
 # Targets start here.
 default: $(PLAT)
 
 all:	$(ALL_T)
+
+d:	$(ALL_D)
 
 o:	$(ALL_O)
 
@@ -68,13 +71,13 @@ $(LUA_A): $(BASE_O)
 	$(RANLIB) $@
 
 $(LUA_T): $(LUA_O) $(LUA_A)
-	$(CC) -o $@ $(LDFLAGS) $(LUA_O) $(LUA_A) $(LIBS)
+	$(CXX) -o $@ $(LDFLAGS) $(LUA_O) $(LUA_A) $(LIBS)
 
 $(LUAC_T): $(LUAC_O) $(LUA_A)
-	$(CC) -o $@ $(LDFLAGS) $(LUAC_O) $(LUA_A) $(LIBS)
+	$(CXX) -o $@ $(LDFLAGS) $(LUAC_O) $(LUA_A) $(LIBS)
 
 clean:
-	$(RM) $(ALL_T) $(ALL_O)
+	$(RM) $(ALL_T) $(ALL_O) $(ALL_D)
 
 depend:
 	@$(CC) $(CFLAGS) -MM l*.c
@@ -90,7 +93,7 @@ echo:
 	@echo "RM= $(RM)"
 
 # Convenience targets for popular platforms
-ALL= all
+ALL?= d
 
 none:
 	@echo "Please do 'make PLATFORM' where PLATFORM is one of these:"
