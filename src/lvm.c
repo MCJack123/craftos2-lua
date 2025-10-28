@@ -251,11 +251,9 @@ static int l_strcmp (lua_State *L, const TValue *l, const TValue* r) {
 
 int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
   int res;
-  if (ttypenv(l) != ttypenv(r))
-    luaG_ordererror(L, l, r);
-  else if (ttisnumber(l))
+  if (ttisnumber(l) && ttisnumber(r))
     return luai_numlt(L, nvalue(l), nvalue(r));
-  else if (ttisstring(l))
+  else if (ttisstring(l) && ttisstring(r))
     return l_strcmp(L, l, r) < 0;
   else if ((res = call_orderTM(L, l, r, TM_LT)) != -1)
     return res;
@@ -265,11 +263,9 @@ int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
 
 int luaV_lessequal (lua_State *L, const TValue *l, const TValue *r) {
   int res;
-  if (ttypenv(l) != ttypenv(r))
-    luaG_ordererror(L, l, r);
-  else if (ttisnumber(l))
+  if (ttisnumber(l) && ttisnumber(r))
     return luai_numle(L, nvalue(l), nvalue(r));
-  else if (ttisstring(l))
+  else if (ttisstring(l) && ttisstring(r))
     return l_strcmp(L, l, r) <= 0;
   else if ((res = call_orderTM(L, l, r, TM_LE)) != -1)  /* first try `le' */
     return res;
