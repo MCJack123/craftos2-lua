@@ -71,7 +71,8 @@ static int math_acos (lua_State *L) {
 }
 
 static int math_atan (lua_State *L) {
-  lua_pushnumber(L, l_mathop(atan)(luaL_checknumber(L, 1)));
+  if (!lua_isnoneornil(L, 2)) lua_pushnumber(L, l_mathop(atan2)(luaL_checknumber(L, 1), luaL_checknumber(L, 2)));
+  else lua_pushnumber(L, l_mathop(atan)(luaL_checknumber(L, 1)));
   return 1;
 }
 
