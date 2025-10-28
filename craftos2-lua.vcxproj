@@ -101,7 +101,7 @@
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
-    <TargetName>lua52</TargetName>
+    <TargetName>lua52d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)craftos2-lua\src\</OutDir>
@@ -161,6 +161,7 @@
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;LUA_BUILD_AS_DLL;LUA_COMPAT_UNPACK;LUA_COMPAT_LOADSTRING;LUA_COMPAT_LOG10;LUA_COMPAT_MAXN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Lib>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
@@ -184,6 +185,8 @@
     <ClCompile>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;LUA_BUILD_AS_DLL;LUA_COMPAT_UNPACK;LUA_COMPAT_LOADSTRING;LUA_COMPAT_LOG10;LUA_COMPAT_MAXN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard_C>stdc11</LanguageStandard_C>
     </ClCompile>
     <PostBuildEvent>
       <Command>copy src\lua52.dll ..\ARM64\ReleaseC\lua52.dll</Command>
