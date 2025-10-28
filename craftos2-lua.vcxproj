@@ -101,7 +101,7 @@
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
-    <TargetName>lua51armd</TargetName>
+    <TargetName>lua52</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)craftos2-lua\src\</OutDir>
@@ -109,7 +109,7 @@
     <CodeAnalysisRuleSet>..\analysis.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
-    <TargetName>lua51arm</TargetName>
+    <TargetName>lua52</TargetName>
     <CodeAnalysisRuleSet>..\analysis.ruleset</CodeAnalysisRuleSet>
     <OutDir>$(SolutionDir)craftos2-lua\src\</OutDir>
   </PropertyGroup>
@@ -166,7 +166,7 @@
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Lib>
     <PostBuildEvent>
-      <Command>copy src\lua51d.dll ..\x64\Debug\lua51d.dll</Command>
+      <Command>copy src\lua52d.dll ..\ARM64\Debug\lua52d.dll</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -186,7 +186,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <PostBuildEvent>
-      <Command>copy src\lua51.dll ..\x64\ReleaseC\lua51.dll</Command>
+      <Command>copy src\lua52.dll ..\ARM64\ReleaseC\lua52.dll</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
