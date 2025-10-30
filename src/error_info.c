@@ -9,6 +9,9 @@
  * Copyright (c) 2025 The CC: Tweaked Developers
  */
 
+#define error_info_c
+#define LUA_LIB
+
 #include "lua.h"
 #include "lauxlib.h"
 
