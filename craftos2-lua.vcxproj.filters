@@ -15,6 +15,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\error_info.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\lapi.c">
       <Filter>Source Files</Filter>
     </ClCompile>
