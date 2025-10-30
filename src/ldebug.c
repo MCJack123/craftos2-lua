@@ -321,9 +321,6 @@ LUA_API int lua_getinfo (lua_State *L, const char *what, lua_Debug *ar) {
 ** =======================================================
 */
 
-static const char *getobjname (Proto *p, int lastpc, int reg,
-                               const char **name);
-
 
 /*
 ** find a "name" for the RK value 'c'
@@ -338,7 +335,7 @@ static void kname (Proto *p, int pc, int c, const char **name) {
     /* else no reasonable name found */
   }
   else {  /* 'c' is a register */
-    const char *what = getobjname(p, pc, c, name); /* search for 'c' */
+    const char *what = luaG_getobjname(p, pc, c, name); /* search for 'c' */
     if (what && *what == 'c') {  /* found a constant name? */
       return;  /* 'name' already filled */
     }
@@ -358,7 +355,7 @@ static int filterpc (int pc, int jmptarget) {
 /*
 ** try to find last instruction before 'lastpc' that modified register 'reg'
 */
-static int findsetreg (Proto *p, int lastpc, int reg) {
+LUAI_FUNC int luaG_findsetreg (Proto *p, int lastpc, int reg) {
   int pc;
   int setreg = -1;  /* keep last instruction that changed 'reg' */
   int jmptarget = 0;  /* any code before this address is conditional */
@@ -409,14 +406,14 @@ static int findsetreg (Proto *p, int lastpc, int reg) {
 }
 
 
-static const char *getobjname (Proto *p, int lastpc, int reg,
+LUAI_FUNC const char *luaG_getobjname (Proto *p, int lastpc, int reg,
                                const char **name) {
   int pc;
   *name = luaF_getlocalname(p, reg + 1, lastpc);
   if (*name)  /* is a local? */
     return "local";
   /* else try symbolic execution */
-  pc = findsetreg(p, lastpc, reg);
+  pc = luaG_findsetreg(p, lastpc, reg);
   if (pc != -1) {  /* could find instruction? */
     Instruction i = p->code[pc];
     OpCode op = GET_OPCODE(i);
@@ -424,7 +421,7 @@ static const char *getobjname (Proto *p, int lastpc, int reg,
       case OP_MOVE: {
         int b = GETARG_B(i);  /* move from 'b' to 'a' */
         if (b < GETARG_A(i))
-          return getobjname(p, pc, b, name);  /* get name for 'b' */
+          return luaG_getobjname(p, pc, b, name);  /* get name for 'b' */
         break;
       }
       case OP_GETTABUP:
@@ -471,7 +468,7 @@ static const char *getfuncname (lua_State *L, CallInfo *ci, const char **name) {
   switch (GET_OPCODE(i)) {
     case OP_CALL:
     case OP_TAILCALL:  /* get function name */
-      return getobjname(p, pc, GETARG_A(i), name);
+      return luaG_getobjname(p, pc, GETARG_A(i), name);
     case OP_TFORCALL: {  /* for iterator */
       *name = "for iterator";
        return "for iterator";
@@ -542,7 +539,7 @@ l_noret luaG_typeerror (lua_State *L, const TValue *o, const char *op) {
   if (isLua(ci)) {
     kind = getupvalname(ci, o, &name);  /* check whether 'o' is an upvalue */
     if (!kind && isinstack(ci, o))  /* no? try a register */
-      kind = getobjname(ci_func(ci)->p, currentpc(ci),
+      kind = luaG_getobjname(ci_func(ci)->p, currentpc(ci),
                         cast_int(o - ci->u.l.base), &name);
   }
   if (kind)

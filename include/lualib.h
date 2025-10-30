@@ -45,6 +45,9 @@ LUAMOD_API int (luaopen_package) (lua_State *L);
 #define LUA_UTF8LIBNAME "utf8"
 LUAMOD_API int (luaopen_utf8) (lua_State *L);
 
+#define LUA_ERRORINFOLIBNAME "cc.internal.error_info"
+LUAMOD_API int (luaopen_error_info) (lua_State *L);
+
 
 /* open all previous libraries */
 LUALIB_API void (luaL_openlibs) (lua_State *L);
