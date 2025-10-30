@@ -16,6 +16,7 @@
 #include "lauxlib.h"
 
 #include "ldebug.h"
+#include "lfunc.h"
 #include "lobject.h"
 #include "lopcodes.h"
 #include "lstate.h"
@@ -60,8 +61,7 @@ static int gettableSafe (lua_State *L, const TValue *t, TValue *key, StkId val) 
 static int evaluate(lua_State *L, CallInfo *ci, Proto *p, int pc, int reg, int depth, TValue *res) {
     if (depth > MAX_DEPTH) return -1;
     
-    const char *tmp;
-    if (luaG_getobjname(p, pc, reg, &tmp) != NULL) {
+    if (luaF_getlocalname(p, reg + 1, pc) != NULL) {
         setobj2s(L, res, ci->top + reg);
         return 0;
     }
@@ -98,9 +98,8 @@ static int evaluate(lua_State *L, CallInfo *ci, Proto *p, int pc, int reg, int d
 }
 
 static int resolveValueSource(lua_State *L, CallInfo *ci, Proto *p, int pc, int reg, int depth) {
-    const char *tmp;
     if (depth > MAX_DEPTH) return -1;
-    if (luaG_getobjname(p, pc, reg, &tmp) == NULL) return -1;
+    if (luaF_getlocalname(p, reg + 1, pc) != NULL) return -1;
 
     pc = luaG_findsetreg(p, pc, reg);
     if (pc == -1) return -1;
@@ -144,7 +143,7 @@ static int error_info_info_for_nil(lua_State *L) {
     
     lua_lock(L);
     Proto *p = ci_func(ar.i_ci)->p;
-    const Instruction *pc = ar.i_ci->u.l.savedpc;
+    const Instruction *pc = ar.i_ci->u.l.savedpc - 1;
     Instruction inst = *pc;
 
     switch (GET_OPCODE(inst)) {
@@ -153,7 +152,7 @@ static int error_info_info_for_nil(lua_State *L) {
             TString *str = luaS_new(L, "call");
             setsvalue2s(L, L->top, str);
             L->top++;
-            if (resolveValueSource(L, ar.i_ci, p, pcRel(pc, p), GETARG_A(inst), 0)) {
+            if (resolveValueSource(L, ar.i_ci, p, pcRel(pc, p) + 1, GETARG_A(inst), 0)) {
                 lua_unlock(L);
                 return 0;
             }
@@ -164,7 +163,7 @@ static int error_info_info_for_nil(lua_State *L) {
             TString *str = luaS_new(L, "index");
             setsvalue2s(L, L->top, str);
             L->top++;
-            if (resolveValueSource(L, ar.i_ci, p, pcRel(pc, p), GETARG_A(inst), 0)) {
+            if (resolveValueSource(L, ar.i_ci, p, pcRel(pc, p) + 1, GETARG_A(inst), 0)) {
                 lua_unlock(L);
                 return 0;
             }

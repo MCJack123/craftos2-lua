@@ -21,8 +21,6 @@
 #define ci_func(ci)		(clLvalue((ci)->func))
 
 LUAI_FUNC int luaG_findsetreg (Proto *p, int lastpc, int reg);
-LUAI_FUNC const char *luaG_getobjname (Proto *p, int lastpc, int reg,
-                                                 const char **name);
 
 
 LUAI_FUNC l_noret luaG_typeerror (lua_State *L, const TValue *o,

@@ -8,7 +8,7 @@ PLAT= none
 
 CC?= gcc
 CXX?= g++
-CFLAGS= -g -Wall -Wno-discarded-qualifiers -O2 -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCFLAGS)
+CFLAGS= -g -Wall -Wno-discarded-qualifiers -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCFLAGS)
 CXXFLAGS= $(CFLAGS) 
 DYLD?= $(CXX) -shared -fPIC
 LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
@@ -143,7 +143,7 @@ emscripten:
 # DO NOT DELETE
 
 error_info.o: error_info.c lua.h luaconf.h ldebug.h lstate.h lobject.h \
- lopcodes.h ltable.h
+ lopcodes.h ltable.h lfunc.h
 lapi.o: lapi.c lua.h luaconf.h lapi.h llimits.h lstate.h lobject.h ltm.h \
  lzio.h lmem.h ldebug.h ldo.h lfunc.h lgc.h lstring.h ltable.h lundump.h \
  lvm.h
