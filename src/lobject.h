@@ -17,19 +17,6 @@
 
 
 /*
-** Extra tags for non-values
-*/
-#define LUA_TPROTO	LUA_NUMTAGS
-#define LUA_TUPVAL	(LUA_NUMTAGS+1)
-#define LUA_TDEADKEY	(LUA_NUMTAGS+2)
-
-/*
-** number of all possible tags (including LUA_TNONE but excluding DEADKEY)
-*/
-#define LUA_TOTALTAGS	(LUA_TUPVAL+2)
-
-
-/*
 ** tags for Tagged Values have the following use of bits:
 ** bits 0-3: actual tag (a LUA_T* value)
 ** bits 4-5: variant bits
@@ -37,26 +24,6 @@
 */
 
 #define VARBITS		(3 << 4)
-
-
-/*
-** LUA_TFUNCTION variants:
-** 0 - Lua function
-** 1 - light C function
-** 2 - regular C function (closure)
-*/
-
-/* Variant tags for functions */
-#define LUA_TLCL	(LUA_TFUNCTION | (0 << 4))  /* Lua closure */
-#define LUA_TLCF	(LUA_TFUNCTION | (1 << 4))  /* light C function */
-#define LUA_TCCL	(LUA_TFUNCTION | (2 << 4))  /* C closure */
-
-
-/* Variant tags for strings */
-#define LUA_TSHRSTR	(LUA_TSTRING | (0 << 4))  /* short strings */
-#define LUA_TLNGSTR	(LUA_TSTRING | (1 << 4))  /* long strings */
-#define LUA_TROPSTR	(LUA_TSTRING | (2 << 4))  /* rope strings */
-#define LUA_TSUBSTR	(LUA_TSTRING | (3 << 4))  /* substrings */
 
 
 /* Bit mark for collectable types */
@@ -436,7 +403,7 @@ typedef union TString {
   struct {
     CommonHeader;
     GCObject *gclist;
-    union TString *cluster;
+    union TString * _safety; /* this is no longer used, but I think its existence mitigates a CVE */
     union TString * left;
     union TString * right;
     size_t len;
@@ -445,7 +412,7 @@ typedef union TString {
   struct {
     CommonHeader;
     GCObject *gclist;
-    union TString *cluster;
+    union TString *_safety;
     union TString *str;
     size_t offset;
     size_t len;

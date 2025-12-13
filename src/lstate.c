@@ -117,7 +117,7 @@ void luaE_setdebt (global_State *g, l_mem debt) {
 
 
 CallInfo *luaE_extendCI (lua_State *L) {
-  CallInfo *ci = luaM_new(L, CallInfo);
+  CallInfo *ci = luaM_newobject(L, LUA_TCALLINFO, sizeof(CallInfo));
   lua_assert(L->ci->next == NULL);
   L->ci->next = ci;
   ci->previous = L->ci;
@@ -132,7 +132,7 @@ void luaE_freeCI (lua_State *L) {
   ci->next = NULL;
   while ((ci = next) != NULL) {
     next = ci->next;
-    luaM_free(L, ci);
+    luaM_freeobject(L, ci, LUA_TCALLINFO);
   }
 }
 
@@ -200,16 +200,6 @@ static void f_luaopen (lua_State *L, void *ud) {
   luaS_fix(g->memerrmsg);  /* it should never be collected */
   /* allocate rope and substring clusters */
   g->ropestack = luaM_newvector(L, g->ropestacksize, TString *);
-  g->ropeclusters = luaM_newvector(L, ROPE_CLUSTER_SIZE, TString);
-  memset(g->ropeclusters, 0, ROPE_CLUSTER_SIZE * sizeof(TString));
-  nextropecluster(g->ropeclusters) = NULL;  /* ensure next pointer is NULL */
-  ((unsigned long*)g->ropeclusters)[BITMAP_SKIP] = 0xFFFF;  /* always mark first entry as used by bitmap */
-  g->ropefreecluster = g->ropeclusters;
-  g->ssclusters = luaM_newvector(L, SUBSTR_CLUSTER_SIZE, TString);
-  memset(g->ssclusters, 0, SUBSTR_CLUSTER_SIZE * sizeof(TString));
-  nextsscluster(g->ssclusters) = NULL;  /* ensure next pointer is NULL */
-  ((unsigned long*)g->ssclusters)[BITMAP_SKIP] = 0xFFFF;  /* always mark first entry as used by bitmap */
-  g->ssfreecluster = g->ssclusters;
   memset(g->allowedcfuncs, 0, sizeof(g->allowedcfuncs));  /* set all funclists to NULL */
   g->gcrunning = 1;  /* allow gc */
   g->version = lua_version(NULL);
@@ -242,8 +232,6 @@ static void preinit_state (lua_State *L, global_State *g) {
 
 static void close_state (lua_State *L) {
   global_State *g = G(L);
-  TString *cluster = g->ropeclusters, *next;
-  TString *sscluster = g->ssclusters, *ssnext;
   luaF_close(L, L->stack);  /* close all upvalues for this thread */
   luaC_freeallobjects(L);  /* collect all objects */
   if (g->version)  /* closing a fully built state? */
@@ -252,16 +240,6 @@ static void close_state (lua_State *L) {
   luaZ_freebuffer(L, &g->buff);
   freestack(L);
   luaM_freearray(L, g->ropestack, g->ropestacksize);
-  while (cluster != NULL) {
-    next = *(TString**)cluster;
-    luaM_freemem(L, cluster, ROPE_CLUSTER_SIZE * sizeof(TString));
-    cluster = next;
-  }
-  while (sscluster != NULL) {
-    ssnext = *(TString**)sscluster;
-    luaM_freemem(L, sscluster, SUBSTR_CLUSTER_SIZE * sizeof(TString));
-    sscluster = ssnext;
-  }
   //lua_assert(gettotalbytes(g) == sizeof(LG));
   if (g->lockstate) lua_unlock(L);
   _lua_freelock(g->lock);
@@ -355,6 +333,8 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud) {
   g->haltstate = 0;
   g->disabled = 0;
   g->ropestacksize = 8;
+  g->fobjalloc = NULL;
+  g->fobjalloc_ud = NULL;
   for (i=0; i < 14; i++) g->mt[i] = NULL;
   if (luaD_rawrunprotected(L, f_luaopen, NULL) != LUA_OK) {
     /* memory allocation error: free partial state */

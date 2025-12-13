@@ -72,16 +72,19 @@ l_noret luaM_toobig (lua_State *L) {
 /*
 ** generic allocation routine.
 */
-void *luaM_realloc_ (lua_State *L, void *block, size_t osize, size_t nsize) {
+void *luaM_realloc_ (lua_State *L, void *block, size_t osize, size_t nsize, int tag) {
   void *newblock;
   global_State *g = G(L);
   size_t realosize = (block) ? osize : 0;
+  if (!realosize) osize = novariant(osize);
   lua_assert((realosize == 0) == (block == NULL));
 #if defined(HARDMEMTESTS)
   if (nsize > realosize && g->gcrunning)
     luaC_fullgc(L, 1);  /* force a GC whenever possible */
 #endif
-  newblock = (*g->frealloc)(g->ud, block, osize, nsize);
+  if (tag && g->fobjalloc)  /* use object allocator if available */
+    newblock = (*g->fobjalloc)(g->fobjalloc_ud, block, tag, osize, nsize);
+  else newblock = (*g->frealloc)(g->ud, block, osize, nsize);
   if (newblock == NULL && nsize > 0) {
     api_check(L, nsize > realosize,
                  "realloc cannot fail when shrinking a block");

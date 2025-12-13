@@ -163,10 +163,8 @@ typedef struct global_State {
   const char * haltmessage;  /* if haltstate is 2, a message to show as the error message */
   TString **ropestack;  /* temporary stack used to store ropes when constructing strings */
   int ropestacksize;  /* size of above stack */
-  TString *ropeclusters;  /* pointer to first node of rope cluster list */
-  TString *ropefreecluster;  /* pointer to first potentially free cluster */
-  TString *ssclusters;  /* pointer to first node of rope cluster list */
-  TString *ssfreecluster;  /* pointer to first potentially free cluster */
+  lua_ObjAlloc fobjalloc;  /* allocator for objects (if desired) */
+  void *fobjalloc_ud;  /* auxiliary data to `fobjalloc` */
   functable *allowedcfuncs[256];  /* "hash map" storing allowed C functions */
 } global_State;
 

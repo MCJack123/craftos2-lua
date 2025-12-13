@@ -560,13 +560,8 @@ LUA_API const char *lua_pushsubstring (lua_State *L, int idx, size_t start, size
   TString *ss = NULL;
   TString *str;
   StkId o;
-  TString *cluster, *next;
-  bitmap_unit *bitmap;
-  int i, j;
-  global_State *g;
   lua_lock(L);
   luaC_checkGC(L);
-  g = G(L);
   o = index2addr(L, idx);
   switch (ttype(o)) {
     case LUA_TSHRSTR: case LUA_TLNGSTR: str = rawtsvalue(o); break;
@@ -583,36 +578,7 @@ LUA_API const char *lua_pushsubstring (lua_State *L, int idx, size_t start, size
       break;
     }
   }
-  for (cluster = g->ssfreecluster; ss == NULL; cluster = nextsscluster(cluster)) {
-    bitmap = (bitmap_unit*)cluster + BITMAP_SKIP;
-    /* search for unused entry in cluster */
-    for (i = 0; i < SUBSTR_CLUSTER_SIZE / BITMAP_UNIT_SIZE; i++) {
-      if (bitmap[i] != ULONG_MAX) {  /* empty space found? */
-        for (j = 0; j < BITMAP_UNIT_SIZE - 1; j++) {  /* if j reaches max long, then it must be unused */
-          if (!(bitmap[i] & (1 << j))) break;
-        }
-        ss = cluster + i * BITMAP_UNIT_SIZE + j;
-        bitmap[i] |= (1 << j);
-        break;
-      }
-    }
-    if (ss != NULL) break;
-    if (nextsscluster(cluster) == NULL) {  /* need new cluster? */
-      next = luaM_newvector(L, SUBSTR_CLUSTER_SIZE, TString);
-      memset(next, 0, SUBSTR_CLUSTER_SIZE * sizeof(TString));
-      nextsscluster(cluster) = next;  /* chain next cluster in list */
-      nextsscluster(next) = NULL;  /* ensure next pointer is NULL */
-      rawclusterid(next) = (clusterid(cluster) + 1) | (g->currentwhite & bitmask(WHITE0BIT) ? 0 : ~CLUSTERID_MASK); /* set cluster number */
-      ((bitmap_unit*)next)[BITMAP_SKIP] = 0xFFFF;  /* always mark first entry as used by bitmap */
-      nextsscluster(cluster) = next;
-    }
-  }
-  g->ssfreecluster = cluster;
-  ss->tsr.marked = luaC_white(g);
-  ss->tsr.tt = LUA_TSUBSTR;
-  ss->tsr.next = g->allgc;
-  g->allgc = cast(GCObject *, ss);
-  ss->tss.cluster = cluster;
+  ss = (TString*)luaC_newobj(L, LUA_TSUBSTR, sizeof(TString), NULL, 0);
   ss->tss.str = str;
   ss->tss.offset = start - 1;
   ss->tss.len = len;
@@ -1263,6 +1229,24 @@ LUA_API void lua_setallocf (lua_State *L, lua_Alloc f, void *ud) {
   lua_lock(L);
   G(L)->ud = ud;
   G(L)->frealloc = f;
+  lua_unlock(L);
+}
+
+
+LUA_API lua_ObjAlloc lua_getobjallocf (lua_State *L, void **ud) {
+  lua_ObjAlloc f;
+  lua_lock(L);
+  if (ud) *ud = G(L)->fobjalloc_ud;
+  f = G(L)->fobjalloc;
+  lua_unlock(L);
+  return f;
+}
+
+
+LUA_API void lua_setobjallocf (lua_State *L, lua_ObjAlloc f, void *ud) {
+  lua_lock(L);
+  G(L)->fobjalloc_ud = ud;
+  G(L)->fobjalloc = f;
   lua_unlock(L);
 }
 

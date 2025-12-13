@@ -188,41 +188,7 @@ Udata *luaS_newudata (lua_State *L, size_t s, Table *e) {
 
 TString *luaS_concat (lua_State *L, TString *l, TString *r) {
   TString *rope = NULL;
-  TString *cluster, *next;
-  bitmap_unit *bitmap;
-  int i, j;
-  global_State *g;
-  g = G(L);
-  for (cluster = g->ropefreecluster; rope == NULL; cluster = nextropecluster(cluster)) {
-    bitmap = (bitmap_unit*)cluster + BITMAP_SKIP;
-    /* search for unused entry in cluster */
-    for (i = 0; i < ROPE_CLUSTER_SIZE / BITMAP_UNIT_SIZE; i++) {
-      if (bitmap[i] != ULONG_MAX) {  /* empty space found? */
-        for (j = 0; j < BITMAP_UNIT_SIZE - 1; j++) {  /* if j reaches max long, then it must be unused */
-          if (!(bitmap[i] & (1 << j))) break;
-        }
-        rope = cluster + i * BITMAP_UNIT_SIZE + j;
-        bitmap[i] |= (1 << j);
-        break;
-      }
-    }
-    if (rope != NULL) break;
-    if (nextropecluster(cluster) == NULL) {  /* need new cluster? */
-      next = luaM_newvector(L, ROPE_CLUSTER_SIZE, TString);
-      memset(next, 0, ROPE_CLUSTER_SIZE * sizeof(TString));
-      nextropecluster(cluster) = next;  /* chain next cluster in list */
-      nextropecluster(next) = NULL;  /* ensure next pointer is NULL */
-      rawclusterid(next) = (clusterid(cluster) + 1) | (g->currentwhite & bitmask(WHITE0BIT) ? 0 : ~CLUSTERID_MASK); /* set cluster number */
-      ((bitmap_unit*)next)[BITMAP_SKIP] = 0xFFFF;  /* always mark first entry as used by bitmap */
-      nextropecluster(cluster) = next;
-    }
-  }
-  g->ropefreecluster = cluster;
-  rope->tsr.marked = luaC_white(g);
-  rope->tsr.tt = LUA_TROPSTR;
-  rope->tsr.next = g->allgc;
-  g->allgc = cast(GCObject *, rope);
-  rope->tsr.cluster = cluster;
+  rope = (TString*)luaC_newobj(L, LUA_TROPSTR, sizeof(TString), NULL, 0);
   rope->tsr.left = l;
   rope->tsr.right = r;
   rope->tsr.len = ((l->tsr.tt == LUA_TLNGSTR || l->tsr.tt == LUA_TSHRSTR) ? cast(TString *, l)->tsv.len : (l->tsr.tt == LUA_TSUBSTR ? cast(TString *, l)->tss.len : l->tsr.len)) +
@@ -297,96 +263,5 @@ TString *luaS_build (lua_State *L, TString *rope) {
   }
   //luaC_step(L);  /* try to let the old rope get freed */
   return s;
-}
-
-void luaS_freerope (lua_State *L, TString *rope) {
-  int idx = rope - rope->tsr.cluster;
-  ((bitmap_unit*)rope->tsr.cluster)[BITMAP_SKIP + idx/BITMAP_UNIT_SIZE] &= ~(1 << (idx % BITMAP_UNIT_SIZE));  /* mark entry as freed */
-  if (clusterid(rope->tsr.cluster) < clusterid(G(L)->ropefreecluster))
-    G(L)->ropefreecluster = rope->tsr.cluster;
-}
-
-void luaS_freesubstr (lua_State *L, TString *ss) {
-  int idx = ss - ss->tss.cluster;
-  ((bitmap_unit*)ss->tss.cluster)[BITMAP_SKIP + idx/BITMAP_UNIT_SIZE] &= ~(1 << (idx % BITMAP_UNIT_SIZE));  /* mark entry as freed */
-  if (clusterid(ss->tss.cluster) < clusterid(G(L)->ssfreecluster))
-    G(L)->ssfreecluster = ss->tss.cluster;
-}
-
-static void freeropeclusters (lua_State *L) {
-  TString *cluster, *last = NULL;
-  bitmap_unit *bitmap;
-  int i, empty, full, kept = 1, setfree = 0;
-  for (cluster = G(L)->ropeclusters; cluster != NULL; last = cluster, cluster = nextropecluster(cluster)) {
-    bitmap = (bitmap_unit*)cluster + BITMAP_SKIP;
-    empty = (bitmap[0] & ~(bitmap_unit)(0xFFFF)) == 0;  /* ignore first entry use bit */
-    full = bitmap[0] == ULONG_MAX;  /* ignore first entry use bit */
-    for (i = 1; i < ROPE_CLUSTER_SIZE / BITMAP_UNIT_SIZE && (empty || full); i++) {
-      if (bitmap[i]) {  /* any entry in use? */
-        empty = 0;
-      }
-      if (bitmap[i] != ULONG_MAX) {  /* any entry *not* in use? */
-        full = 0;
-      }
-    }
-    if (empty) {  /* entire cluster unused? */
-      if (kept) {
-        kept--;  /* leave one empty cluster allocated */
-        setfree = 1;
-        G(L)->ropefreecluster = cluster;
-      } else {
-        /* unlink and free cluster */
-        nextropecluster(last) = nextropecluster(cluster);
-        if (G(L)->ropefreecluster == cluster)
-          G(L)->ropefreecluster = nextropecluster(cluster);
-        luaM_freemem(L, cluster, ROPE_CLUSTER_SIZE * sizeof(TString));
-        cluster = last;
-      }
-    } else if (full && !setfree) {
-      setfree = 1;
-      G(L)->ropefreecluster = cluster;
-    }
-  }
-}
-
-static void freessclusters (lua_State *L) {
-  TString *cluster, *last = NULL;
-  bitmap_unit *bitmap;
-  int i, empty, full, kept = 1, setfree = 0;
-  for (cluster = G(L)->ssclusters; cluster != NULL; last = cluster, cluster = nextsscluster(cluster)) {
-    bitmap = (bitmap_unit*)cluster + BITMAP_SKIP;
-    empty = (bitmap[0] & ~(bitmap_unit)(0xFFFF)) == 0;  /* ignore first entry use bit */
-    full = bitmap[0] == ULONG_MAX;  /* ignore first entry use bit */
-    for (i = 1; i < SUBSTR_CLUSTER_SIZE / BITMAP_UNIT_SIZE && (empty || full); i++) {
-      if (bitmap[i]) {  /* any entry in use? */
-        empty = 0;
-      }
-      if (bitmap[i] != ULONG_MAX) {  /* any entry *not* in use? */
-        full = 0;
-      }
-    }
-    if (empty) {  /* entire cluster unused? */
-      if (kept) {
-        kept--;  /* leave one empty cluster allocated */
-        setfree = 1;
-        G(L)->ssfreecluster = cluster;
-      } else {
-        /* unlink and free cluster */
-        nextsscluster(last) = nextsscluster(cluster);
-        if (G(L)->ssfreecluster == cluster)
-          G(L)->ssfreecluster = nextsscluster(cluster);
-        luaM_freemem(L, cluster, SUBSTR_CLUSTER_SIZE * sizeof(TString));
-        cluster = last;
-      }
-    } else if (full && !setfree) {
-      setfree = 1;
-      G(L)->ssfreecluster = cluster;
-    }
-  }
-}
-
-void luaS_freeclusters (lua_State *L) {
-  freeropeclusters(L);
-  freessclusters(L);
 }
 

@@ -71,6 +71,12 @@ typedef void * (*lua_Alloc) (void *ud, void *ptr, size_t osize, size_t nsize);
 
 
 /*
+** prototype for object-allocation functions
+*/
+typedef void * (*lua_ObjAlloc) (void *ud, void *ptr, int type, size_t osize, size_t nsize);
+
+
+/*
 ** basic types
 */
 #define LUA_TNONE		(-1)
@@ -88,6 +94,41 @@ typedef void * (*lua_Alloc) (void *ud, void *ptr, size_t osize, size_t nsize);
 #define LUA_NUMTAGS		9
 
 
+/*
+** Extra tags for non-values
+*/
+#define LUA_TPROTO	LUA_NUMTAGS
+#define LUA_TUPVAL	(LUA_NUMTAGS+1)
+#define LUA_TDEADKEY	(LUA_NUMTAGS+2)
+#define LUA_TCALLINFO	(LUA_NUMTAGS+3)
+
+/*
+** number of all possible tags (including LUA_TNONE but excluding DEADKEY)
+*/
+#define LUA_TOTALTAGS	(LUA_TUPVAL+3)
+
+
+/*
+** LUA_TFUNCTION variants:
+** 0 - Lua function
+** 1 - light C function
+** 2 - regular C function (closure)
+*/
+
+/* Variant tags for functions */
+#define LUA_TLCL	(LUA_TFUNCTION | (0 << 4))  /* Lua closure */
+#define LUA_TLCF	(LUA_TFUNCTION | (1 << 4))  /* light C function */
+#define LUA_TCCL	(LUA_TFUNCTION | (2 << 4))  /* C closure */
+
+
+/* Variant tags for strings */
+#define LUA_TSHRSTR	(LUA_TSTRING | (0 << 4))  /* short strings */
+#define LUA_TLNGSTR	(LUA_TSTRING | (1 << 4))  /* long strings */
+#define LUA_TROPSTR	(LUA_TSTRING | (2 << 4))  /* rope strings */
+#define LUA_TSUBSTR	(LUA_TSTRING | (3 << 4))  /* substrings */
+
+/* For use in object allocators, removes variants from the type */
+#define lua_ttypenv(t) ((t) & 15)
 
 /* minimum Lua stack available to a C function */
 #define LUA_MINSTACK	20
@@ -312,6 +353,9 @@ LUA_API void  (lua_len)    (lua_State *L, int idx);
 
 LUA_API lua_Alloc (lua_getallocf) (lua_State *L, void **ud);
 LUA_API void      (lua_setallocf) (lua_State *L, lua_Alloc f, void *ud);
+
+LUA_API lua_ObjAlloc (lua_getobjallocf) (lua_State *L, void **ud);
+LUA_API void         (lua_setobjallocf) (lua_State *L, lua_ObjAlloc f, void *ud);
 
 LUA_API void  (lua_halt) (lua_State *L); /* forcefully halts the Lua state specified from a separate thread
 											warning: this will leave the state in an invalid state;

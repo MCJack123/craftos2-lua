@@ -212,7 +212,7 @@ void luaC_checkupvalcolor (global_State *g, UpVal *uv) {
 GCObject *luaC_newobj (lua_State *L, int tt, size_t sz, GCObject **list,
                        int offset) {
   global_State *g = G(L);
-  char *raw = cast(char *, luaM_newobject(L, novariant(tt), sz));
+  char *raw = cast(char *, luaM_newobject(L, tt, sz));
   GCObject *o = obj2gco(raw + offset);
   if (list == NULL)
     list = &g->allgc;  /* standard list for collectable objects */
@@ -531,21 +531,13 @@ static int traverserope (global_State *g, TString *r) {
     markobject(g, r->tsr.right);
   if (r->tsr.res)
     markobject(g, r->tsr.res);
-  if ((rawclusterid(r->tsr.cluster) & ~CLUSTERID_MASK ? 1 : 0) != (g->currentwhite & bitmask(WHITE0BIT) ? 1 : 0)) {
-    rawclusterid(r->tsr.cluster) = clusterid(r->tsr.cluster) | (g->currentwhite & bitmask(WHITE0BIT) ? ~CLUSTERID_MASK : 0);
-    return sizeof(TString);
-  }
-  return 0;
+  return sizeof(TString);
 }
 
 
 static int traversesubstr (global_State *g, TString *ss) {
   markobject(g, ss->tss.str);
-  if ((rawclusterid(ss->tss.cluster) & ~CLUSTERID_MASK ? 1 : 0) != (g->currentwhite & bitmask(WHITE0BIT) ? 1 : 0)) {
-    rawclusterid(ss->tss.cluster) = clusterid(ss->tss.cluster) | (g->currentwhite & bitmask(WHITE0BIT) ? ~CLUSTERID_MASK : 0);
-    return sizeof(TString);
-  }
-  return 0;
+  return sizeof(TString);
 }
 
 
@@ -711,26 +703,29 @@ static void freeobj (lua_State *L, GCObject *o) {
   switch (gch(o)->tt) {
     case LUA_TPROTO: luaF_freeproto(L, gco2p(o)); break;
     case LUA_TLCL: {
-      luaM_freemem(L, o, sizeLclosure(gco2lcl(o)->nupvalues));
+      luaM_freeobjectmem(L, o, LUA_TLCL, sizeLclosure(gco2lcl(o)->nupvalues));
       break;
     }
     case LUA_TCCL: {
-      luaM_freemem(L, o, sizeCclosure(gco2ccl(o)->nupvalues));
+      luaM_freeobjectmem(L, o, LUA_TCCL, sizeCclosure(gco2ccl(o)->nupvalues));
       break;
     }
     case LUA_TUPVAL: luaF_freeupval(L, gco2uv(o)); break;
     case LUA_TTABLE: luaH_free(L, gco2t(o)); break;
     case LUA_TTHREAD: luaE_freethread(L, gco2th(o)); break;
-    case LUA_TUSERDATA: luaM_freemem(L, o, sizeudata(gco2u(o))); break;
+    case LUA_TUSERDATA: luaM_freeobjectmem(L, o, LUA_TUSERDATA, sizeudata(gco2u(o))); break;
     case LUA_TSHRSTR:
       G(L)->strt.nuse--;
       /* go through */
     case LUA_TLNGSTR: {
-      luaM_freemem(L, o, sizestring(gco2ts(o)));
+      luaM_freeobjectmem(L, o, gch(o)->tt, sizestring(gco2ts(o)));
       break;
     }
-    case LUA_TROPSTR: luaS_freerope(L, rawgco2tr(o)); break;
-    case LUA_TSUBSTR: luaS_freesubstr(L, rawgco2ss(o)); break;
+    case LUA_TROPSTR:
+    case LUA_TSUBSTR: {
+      luaM_freeobjectmem(L, o, gch(o)->tt, sizeof(TString));
+      break;
+    }
     default: lua_assert(0);
   }
 }
@@ -1092,9 +1087,7 @@ static lu_mem singlestep (lua_State *L) {
     case GCSpause: {
       /* start to count memory traversed */
       g->GCmemtrav = g->strt.size * sizeof(GCObject*) +
-        g->ropestacksize * sizeof(TString*) +
-        ROPE_CLUSTER_SIZE * sizeof(TString) +
-        SUBSTR_CLUSTER_SIZE * sizeof(TString);  /* "static" blocks */
+        g->ropestacksize * sizeof(TString*);  /* "static" blocks */
       lua_assert(!isgenerational(g));
       restartcollection(g);
       g->gcstate = GCSpropagate;
@@ -1146,7 +1139,6 @@ static lu_mem singlestep (lua_State *L) {
         GCObject *mt = obj2gco(g->mainthread);
         sweeplist(L, &mt, 1);
         checkSizes(L);
-        luaS_freeclusters(L);
         g->gcstate = GCSpause;  /* finish collection */
         return GCSWEEPCOST;
       }
