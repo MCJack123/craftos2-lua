@@ -283,7 +283,7 @@ static int gethooktable(lua_State *L) {
 }
 
 
-static int hook_continue(lua_State *L) { return 0; } // placeholder
+static int hook_continue(lua_State *L) { return 0; } /* placeholder */
 
 
 static void hookf (lua_State *L, lua_Debug *ar) {
@@ -474,7 +474,7 @@ LUAMOD_API int luaopen_debug (lua_State *L) {
 }
 
 LUALIB_API void lualib_debug_ccpc_functions(void(*scm)(lua_State *L, int), lua_CFunction debug, lua_CFunction breakpoint, lua_CFunction unsetbreakpoint) {
-  //setcompmask = scm;
+  /*setcompmask = scm;*/
   dblib[0].func = debug;
   dblib[8].func = breakpoint;
   dblib[17].func = unsetbreakpoint;

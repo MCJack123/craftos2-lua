@@ -261,7 +261,7 @@ TString *luaS_build (lua_State *L, TString *rope) {
     resetbits(s->tsv.marked, WHITEBITS);
     setbits(s->tsv.marked, bitmask(BLACKBIT));
   }
-  //luaC_step(L);  /* try to let the old rope get freed */
+  /*luaC_step(L);*/  /* try to let the old rope get freed */
   return s;
 }
 

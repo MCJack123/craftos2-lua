@@ -548,9 +548,11 @@
 
 #define LUAI_MAXCCALLS 1000
 
-//#include <assert.h>
-//#define lua_assert(c) assert(c)
-//#define LUA_DEBUG_VM 1
+/*
+#include <assert.h>
+#define lua_assert(c) assert(c)
+#define LUA_DEBUG_VM 1
+*/
 
 #endif
 

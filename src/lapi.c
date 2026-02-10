@@ -370,7 +370,7 @@ LUA_API lua_Unsigned lua_tounsignedx (lua_State *L, int idx, int *isnum) {
   if (tonumber(L, o, &n)) {
     lua_Unsigned res;
     lua_Number num = nvalue(o);
-    //lua_number2unsigned(res, num);
+    /*lua_number2unsigned(res, num);*/
     if (num < 0) res = -(lua_Unsigned)fabs(floor(num));
     else res = (lua_Unsigned)floor(num);
     if (isnum) *isnum = 1;
@@ -944,7 +944,7 @@ LUA_API void lua_callk (lua_State *L, int nargs, int nresults, int ctx,
   StkId func;
   lua_lock(L);
   api_checknelems(L, nargs+1);
-  //api_check(L, L->status == LUA_OK, "cannot do calls on non-normal thread");
+  /*api_check(L, L->status == LUA_OK, "cannot do calls on non-normal thread");*/
   checkresults(L, nargs, nresults);
   func = L->top - (nargs+1);
   if (k != NULL && L->nny == 0) {  /* need to prepare continuation? */

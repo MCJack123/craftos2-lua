@@ -240,7 +240,7 @@ static void close_state (lua_State *L) {
   luaZ_freebuffer(L, &g->buff);
   freestack(L);
   luaM_freearray(L, g->ropestack, g->ropestacksize);
-  //lua_assert(gettotalbytes(g) == sizeof(LG));
+  /*lua_assert(gettotalbytes(g) == sizeof(LG));*/
   if (g->lockstate) lua_unlock(L);
   _lua_freelock(g->lock);
   (*g->frealloc)(g->ud, fromstate(L), sizeof(LG), 0);  /* free main block */
