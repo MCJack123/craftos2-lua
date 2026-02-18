@@ -23,7 +23,7 @@
 #include "lstring.h"
 #include "ltable.h"
 
-// This code is adapted from https://github.com/cc-tweaked/CC-Tweaked/blob/mc-1.20.x/projects/core/src/main/java/dan200/computercraft/core/lua/errorinfo/ErrorInfoLib.java
+/* This code is adapted from https://github.com/cc-tweaked/CC-Tweaked/blob/mc-1.20.x/projects/core/src/main/java/dan200/computercraft/core/lua/errorinfo/ErrorInfoLib.java */
 
 #define MAX_DEPTH 8
 /* limit for table tag-method chains (to avoid loops) */
