@@ -19,3 +19,4 @@ luac
 *.vcxproj.user
 *.so
 *.dylib
+*.d
