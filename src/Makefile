@@ -33,7 +33,7 @@ MYOBJS=
 PLATS= aix ansi bsd freebsd generic linux macosx macosx-arm mingw posix solaris emscripten
 
 LUA_A?=	liblua.a
-LUA_D?= liblua.so
+LUA_D?= libcraftos2-lua.so
 CORE_O=	lapi.o lcode.o lctype.o ldebug.o ldo.o ldump.o lfunc.o lgc.o llex.o \
 	lmem.o lobject.o lopcodes.o lparser.o lstate.o lstring.o ltable.o \
 	ltm.o lundump.o lvm.o lzio.o llock.o
@@ -114,7 +114,8 @@ freebsd:
 generic: $(ALL)
 
 linux:
-	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_LINUX -fPIC" SYSLIBS="-Wl,-E -ldl -lreadline"
+	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_LINUX -fPIC" SYSLIBS="-Wl,-E -ldl -lreadline" MYLDFLAGS="$(MYLDFLAGS) -Wl,-soname,$(LUA_D)"
+
 
 macosx:
 	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_MACOSX -mmacosx-version-min=10.9" SYSLIBS="-lreadline" CC=cc CXX=c++ LUA_D="liblua.dylib" DYLD="$(CXX) -dynamiclib -fPIC"
